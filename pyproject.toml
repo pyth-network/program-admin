@@ -1,0 +1,40 @@
+[tool.poetry]
+authors = ["Thomaz <thomaz@pyth.network>"]
+description = "Syncs products and publishers of the Pyth program"
+name = "program-sync"
+version = "0.1.0"
+
+[tool.poetry.dependencies]
+construct = "2.10.67"
+loguru = "^0.6.0"
+pythclient = "^0.1.0"
+python = "^3.10"
+solana = "^0.23.1"
+ujson = "^5.2.0"
+
+[tool.poetry.dev-dependencies]
+black = { version = "^22.3.0" }
+isort = { version = "^5.10.1" }
+ipython = "^8.2.0"
+mypy = "^0.942"
+pylint = "^2.13.5"
+types-ujson = "^4.2.1"
+
+[tool.pylint.core]
+extension-pkg-allow-list = "ujson"
+
+[tool.pylint.messages_control]
+disable = [
+    "fixme",
+    "missing-class-docstring",
+    "missing-module-docstring",
+    "missing-function-docstring",
+    "too-few-public-methods",
+    "too-many-instance-attributes",
+    "too-many-locals",
+    "line-too-long",
+]
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]
