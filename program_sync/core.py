@@ -143,7 +143,7 @@ class ProgramSync:
                 symbol_product_data = product_data
 
         if not symbol_product_data:
-            raise RuntimeError(f"No program account for symbol {symbol}")
+            raise RuntimeError(f"No product account for symbol {symbol}")
 
         # FIXME: Handle multiple price accounts
         price_account = self.price_accounts[symbol_product_data.first_price_account_key]
