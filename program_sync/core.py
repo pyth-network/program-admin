@@ -1,9 +1,12 @@
 from pathlib import Path
 from typing import Dict, Set, cast
 
+from solana.keypair import Keypair
 from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
+from solana.transaction import Transaction
 
+from program_sync import instructions
 from program_sync.parsing import (
     parse_account,
     parse_products_json,
@@ -84,6 +87,33 @@ class ProgramSync:
 
             if new_publishers:
                 print(f"New {jump_symbol} publishers: {new_publishers}")
+
+    async def init_mapping_account(
+        self, funding_keypair: Keypair, mapping_keypair: Keypair
+    ):
+        async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
+            blockhash_response = await client.get_recent_blockhash()
+            blockhash = blockhash_response["result"]["value"]["blockhash"]
+
+            instruction = instructions.init_mapping(
+                self.program_key,
+                funding_keypair.public_key,
+                mapping_keypair.public_key,
+            )
+            transaction = Transaction(
+                recent_blockhash=blockhash, fee_payer=funding_keypair.public_key
+            )
+
+            transaction.add(instruction)
+            transaction.sign(funding_keypair, mapping_keypair)
+
+            response = await client.send_transaction(
+                transaction, funding_keypair, mapping_keypair
+            )
+
+            print(response)
+
+        return
 
     async def fetch_program_accounts(self):
         async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:

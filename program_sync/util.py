@@ -3,6 +3,7 @@ import os
 from typing import List
 
 from solana.publickey import PublicKey
+from solana.rpc.async_api import AsyncClient
 
 from program_sync.types import MappingData, PythAccount
 
@@ -21,6 +22,12 @@ class EnvDefault(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values)
+
+
+async def recent_blockhash(client: AsyncClient) -> str:
+    blockhash_response = await client.get_recent_blockhash()
+
+    return blockhash_response["result"]["value"]["blockhash"]
 
 
 def sort_mapping_account_keys(accounts: List[PythAccount]) -> List[PublicKey]:
