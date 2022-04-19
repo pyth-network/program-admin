@@ -1,7 +1,7 @@
 [tool.poetry]
 authors = ["Thomaz <thomaz@pyth.network>"]
 description = "Syncs products and publishers of the Pyth program"
-name = "program-sync"
+name = "program-admin"
 version = "0.1.0"
 
 [tool.poetry.dependencies]

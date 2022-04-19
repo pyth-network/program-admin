@@ -1,7 +1,7 @@
 # Reference: https://bmaingret.github.io/blog/2021-11-15-Docker-and-Poetry#multi-stage-build
 
-ARG APP_NAME=program-sync
-ARG APP_PACKAGE=program_sync
+ARG APP_NAME=program-admin
+ARG APP_PACKAGE=program_admin
 ARG APP_PATH=/opt/$APP_NAME
 ARG PYTHON_VERSION=3.10.2
 ARG POETRY_VERSION=1.1.13

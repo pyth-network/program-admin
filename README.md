@@ -1,3 +1,3 @@
-# Program Sync
+# Program Admin
 
-_Update the Pyth program state from reference product/publisher data_
+_Manage the Pyth program accounts_

@@ -6,7 +6,7 @@ import ujson as json
 from construct import Int8ul, Int32sl, Int32ul, Int64sl, Int64ul
 from solana.publickey import PublicKey
 
-from program_sync.types import (
+from program_admin.types import (
     AccountData,
     MappingData,
     PriceComponent,

@@ -6,13 +6,13 @@ from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
 from solana.transaction import Transaction
 
-from program_sync import instructions
-from program_sync.parsing import (
+from program_admin import instructions
+from program_admin.parsing import (
     parse_account,
     parse_products_json,
     parse_publishers_json,
 )
-from program_sync.types import (
+from program_admin.types import (
     MappingData,
     Network,
     PriceData,

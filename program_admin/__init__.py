@@ -3,8 +3,8 @@ import asyncio
 
 from loguru import logger
 
-from program_sync.core import ProgramSync
-from program_sync.util import EnvDefault
+from program_admin.sync import ProgramSync
+from program_admin.util import EnvDefault
 
 
 def main():

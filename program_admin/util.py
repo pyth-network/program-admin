@@ -5,7 +5,7 @@ from typing import List
 from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
 
-from program_sync.types import MappingData, PythAccount
+from program_admin.types import MappingData, PythAccount
 
 
 # pylint: disable=super-with-arguments
