@@ -17,6 +17,9 @@ from program_admin.types import (
     ProductMetadata,
     Publishers,
     PythAccount,
+    PythMappingAccount,
+    PythPriceAccount,
+    PythProductAccount,
 )
 
 MAGIC_NUMBER = "0xa1b2c3d4"
@@ -174,12 +177,21 @@ def parse_account(response: Dict[str, Any]) -> Optional[PythAccount]:
     if not account_data:
         return None
 
-    return PythAccount(
-        PublicKey(response["pubkey"]),
-        PublicKey(response["account"]["owner"]),
-        response["account"]["lamports"],
-        account_data,
-    )
+    account_args = {
+        "public_key": PublicKey(response["pubkey"]),
+        "owner": PublicKey(response["account"]["owner"]),
+        "lamports": response["account"]["lamports"],
+        "data": account_data,
+    }
+
+    if isinstance(account_data, MappingData):
+        return PythMappingAccount(**account_args)
+    elif isinstance(account_data, ProductData):
+        return PythProductAccount(**account_args)
+    elif isinstance(account_data, PriceData):
+        return PythPriceAccount(**account_args)
+    else:
+        raise RuntimeError("Invalid account data")
 
 
 def parse_publishers_json(file_path: Path) -> Publishers:

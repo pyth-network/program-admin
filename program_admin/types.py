@@ -32,7 +32,7 @@ class MappingData:
     product_account_keys: List[PublicKey]
 
     def __str__(self) -> str:
-        return f"MappingData(accounts={len(self.product_account_keys)}, next_mapping_key={str(self.next_mapping_account_key)[0:8]}...)"
+        return f"MappingData(accounts={len(self.product_account_keys)}, next_mapping_key={str(self.next_mapping_account_key)[0:5]}...)"
 
 
 ProductMetadata = TypedDict(
@@ -55,7 +55,7 @@ class ProductData:
     metadata: ProductMetadata
 
     def __str__(self) -> str:
-        return f"ProductData(symbol={self.metadata['symbol']})"
+        return f"ProductData(symbol={self.metadata.get('symbol', '???')})"
 
 
 @dataclass
@@ -97,7 +97,7 @@ class PriceData:
     price_components: List[PriceComponent]
 
     def __str__(self) -> str:
-        return f"PriceData(product_key={str(self.product_account_key)[0:8]}...)"
+        return f"PriceData(product_key={str(self.product_account_key)[0:5]}...)"
 
 
 AccountData = Union[MappingData, ProductData, PriceData]
@@ -111,6 +111,19 @@ class PythAccount:
     data: AccountData
 
     def __str__(self) -> str:
-        return (
-            f"PythAccount(public_key={str(self.public_key)[0:8]}..., data={self.data})"
-        )
+        return f"PythAccount(key={str(self.public_key)[0:5]}..., data={self.data})"
+
+
+@dataclass
+class PythMappingAccount(PythAccount):
+    data: MappingData
+
+
+@dataclass
+class PythProductAccount(PythAccount):
+    data: ProductData
+
+
+@dataclass
+class PythPriceAccount(PythAccount):
+    data: PriceData
