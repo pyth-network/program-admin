@@ -1,27 +1,9 @@
-import argparse
-import os
 from typing import List
 
 from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
 
 from program_admin.types import MappingData, PythAccount
-
-
-# pylint: disable=super-with-arguments
-class EnvDefault(argparse.Action):
-    # Allow setting arguments from environment variables
-    # https://stackoverflow.com/a/10551190
-    def __init__(self, env_var, required=True, default=None, **kwargs):
-        if not default and env_var:
-            if env_var in os.environ:
-                default = os.environ[env_var]
-        if required and default:
-            required = False
-        super(EnvDefault, self).__init__(default=default, required=required, **kwargs)
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, values)
 
 
 async def recent_blockhash(client: AsyncClient) -> str:

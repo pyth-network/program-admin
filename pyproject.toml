@@ -5,6 +5,7 @@ name = "program-admin"
 version = "0.1.0"
 
 [tool.poetry.dependencies]
+click = "^8.1.2"
 construct = "2.10.67"
 loguru = "^0.6.0"
 pythclient = "^0.1.0"
@@ -19,6 +20,9 @@ ipython = "^8.2.0"
 mypy = "^0.942"
 pylint = "^2.13.5"
 types-ujson = "^4.2.1"
+
+[tool.poetry.scripts]
+program-admin = "program_admin.cli:cli"
 
 [tool.pylint.core]
 extension-pkg-allow-list = "ujson"

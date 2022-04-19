@@ -30,7 +30,7 @@ RPC_ENDPOINTS: Dict[Network, str] = {
 }
 
 
-class ProgramSync:
+class Sync:
     network: Network
     program_key: PublicKey
     products: Dict[str, Product]
