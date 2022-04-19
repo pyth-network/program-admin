@@ -30,14 +30,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/python-poetry
-      - run: poetry run pylint program_sync
+      - run: poetry run pylint program_admin
 
   check-types:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/python-poetry
-      - run: poetry run mypy program_sync
+      - run: poetry run mypy program_admin
 
   build-and-push-image:
     runs-on: ubuntu-latest
