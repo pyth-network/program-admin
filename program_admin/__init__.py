@@ -6,6 +6,7 @@ from solana import system_program
 from solana.keypair import Keypair
 from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
+from solana.rpc.types import TxOpts
 from solana.transaction import Transaction, TransactionInstruction
 
 from program_admin import instructions
@@ -97,9 +98,12 @@ class ProgramAdmin:
             transaction.sign(*signers)
 
             response = await client.send_transaction(
-                transaction, *signers, recent_blockhash=blockhash
+                transaction,
+                *signers,
+                recent_blockhash=blockhash,
+                opts=TxOpts(skip_confirmation=False),
             )
-            logger.info(response)
+            logger.debug(f"Transaction: {response['result']}")
 
     def get_mapping_account(self, key: PublicKey) -> PythMappingAccount:
         return self._mapping_accounts[key]
@@ -130,8 +134,6 @@ class ProgramAdmin:
         mapping_0_keypair = load_keypair("mapping_0", generate=True)
 
         if not mapping_chain:
-            logger.info("Creating first mapping account")
-            # blockhash = await recent_blockhash(rpc_client)
             create_account_ix = system_program.create_account(
                 system_program.CreateAccountParams(
                     from_pubkey=program_keypair.public_key,
@@ -147,6 +149,7 @@ class ProgramAdmin:
                 program_keypair.public_key,
                 mapping_0_keypair.public_key,
             )
+            logger.info("Creating first mapping account")
             await self.send_transaction(
                 [create_account_ix, init_mapping_ix],
                 [program_keypair, mapping_0_keypair],
@@ -196,10 +199,16 @@ class ProgramAdmin:
                 mapping_keypair.public_key,
                 product_keypair.public_key,
             )
+            update_product_ix = instructions.update_product(
+                self.program_key,
+                program_keypair.public_key,
+                product_keypair.public_key,
+                ref_products[jump_symbols[symbol]]["metadata"],
+            )
 
             logger.info(f"Creating {symbol} product account")
             await self.send_transaction(
-                [create_account_ix, add_product_ix],
+                [create_account_ix, add_product_ix, update_product_ix],
                 [program_keypair, mapping_keypair, product_keypair],
             )
 

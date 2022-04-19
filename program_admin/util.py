@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 
 from solana.blockhash import Blockhash
 from solana.publickey import PublicKey
@@ -16,6 +16,20 @@ async def recent_blockhash(client: AsyncClient) -> Blockhash:
     blockhash_response = await client.get_recent_blockhash()
 
     return Blockhash(blockhash_response["result"]["value"]["blockhash"])
+
+
+def encode_product_metadata(data: Dict[str, str]) -> bytes:
+    buffer = b""
+
+    for key, value in data.items():
+        key_bytes = key.encode("utf8")
+        key_len = len(key_bytes).to_bytes(1, byteorder="little")
+        value_bytes = value.encode("utf8")
+        value_len = len(value_bytes).to_bytes(1, byteorder="little")
+
+        buffer += key_len + key_bytes + value_len + value_bytes
+
+    return buffer
 
 
 def sort_mapping_account_keys(accounts: List[PythMappingAccount]) -> List[PublicKey]:
