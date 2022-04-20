@@ -214,30 +214,6 @@ class ProgramAdmin:
 
         return
 
-        # 2. Create new product and price accounts
-        old_products = self.list_old_products()
-
-        if old_products:
-            print(f"Old product accounts: {old_products}")
-
-        # 3. Create new product and price accounts
-
-        if new_products:
-            print(f"New product accounts: {new_products}")
-
-        for jump_symbol, _price_accounts in publishers["permissions"].items():
-            # 4. Remove old publisher key (assumes a single price account)
-            old_publishers = self.list_old_publishers(jump_symbol)
-
-            if old_publishers:
-                print(f"Old {jump_symbol} publishers: {old_publishers}")
-
-            # 5. Create new publisher key (assumes a single price account)
-            new_publishers = self.list_new_publishers(jump_symbol)
-
-            if new_publishers:
-                print(f"New {jump_symbol} publishers: {new_publishers}")
-
     def list_program_symbols(self) -> Set[str]:
         symbols = set()
 
@@ -279,19 +255,3 @@ class ProgramAdmin:
     #            publishers.add(f"??? ({str(component.publisher_key)})")
 
     #    return publishers
-
-    # def list_new_products(self) -> Set[str]:
-    #    return self.list_reference_symbols() - self.list_program_symbols()
-
-    # def list_old_products(self) -> Set[str]:
-    #    return self.list_program_symbols() - self.list_reference_symbols()
-
-    # def list_new_publishers(self, jump_symbol: str) -> Set[str]:
-    #    return self.list_reference_publishers(
-    #        jump_symbol
-    #    ) - self.list_program_publishers(jump_symbol)
-
-    # def list_old_publishers(self, jump_symbol: str) -> Set[str]:
-    #    return self.list_program_publishers(
-    #        jump_symbol
-    #    ) - self.list_reference_publishers(jump_symbol)
