@@ -30,6 +30,7 @@ from program_admin.types import (
 from program_admin.util import (
     MAPPING_ACCOUNT_PRODUCT_LIMIT,
     MAPPING_ACCOUNT_SIZE,
+    PRICE_ACCOUNT_SIZE,
     PRODUCT_ACCOUNT_SIZE,
     SOL_LAMPORTS,
     recent_blockhash,
@@ -183,7 +184,8 @@ class ProgramAdmin:
             product_keypair = load_keypair(
                 f"product_{jump_symbols[symbol]}", generate=True
             )
-            create_account_ix = system_program.create_account(
+            price_keypair = load_keypair(f"price_{jump_symbols[symbol]}", generate=True)
+            create_product_account_ix = system_program.create_account(
                 system_program.CreateAccountParams(
                     from_pubkey=program_keypair.public_key,
                     new_account_pubkey=product_keypair.public_key,
@@ -205,11 +207,34 @@ class ProgramAdmin:
                 product_keypair.public_key,
                 ref_products[jump_symbols[symbol]]["metadata"],
             )
+            create_price_account_ix = system_program.create_account(
+                system_program.CreateAccountParams(
+                    from_pubkey=program_keypair.public_key,
+                    new_account_pubkey=price_keypair.public_key,
+                    # FIXME: Change to minimum rent-exempt amount
+                    lamports=1 * SOL_LAMPORTS,
+                    space=PRICE_ACCOUNT_SIZE,
+                    program_id=self.program_key,
+                )
+            )
+            add_price_ix = instructions.add_price(
+                self.program_key,
+                program_keypair.public_key,
+                product_keypair.public_key,
+                price_keypair.public_key,
+                ref_products[jump_symbols[symbol]]["exponent"],
+            )
 
             logger.info(f"Creating {symbol} product account")
             await self.send_transaction(
-                [create_account_ix, add_product_ix, update_product_ix],
-                [program_keypair, mapping_keypair, product_keypair],
+                [
+                    create_product_account_ix,
+                    add_product_ix,
+                    update_product_ix,
+                    create_price_account_ix,
+                    add_price_ix,
+                ],
+                [program_keypair, mapping_keypair, product_keypair, price_keypair],
             )
 
         return

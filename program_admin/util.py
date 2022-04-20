@@ -8,6 +8,7 @@ from program_admin.types import PythMappingAccount
 
 MAPPING_ACCOUNT_SIZE = 20536  # https://github.com/pyth-network/pyth-client/blob/b49f73afe32ce8685a3d05e32d8f3bb51909b061/program/src/oracle/oracle.h#L88
 MAPPING_ACCOUNT_PRODUCT_LIMIT = 640
+PRICE_ACCOUNT_SIZE = 3312
 PRODUCT_ACCOUNT_SIZE = 512
 SOL_LAMPORTS = pow(10, 9)
 

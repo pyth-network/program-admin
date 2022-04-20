@@ -31,11 +31,17 @@ def list_accounts(network, program_key):
 
     while mapping_key != PublicKey(0):
         mapping_account = program_admin.get_mapping_account(mapping_key)
-        print(mapping_account)
+        print(f"Mapping: {mapping_account}")
 
         for product_key in mapping_account.data.product_account_keys:
             product_account = program_admin.get_product_account(product_key)
-            print(f"  {product_account}")
+            print(f"  Product: {product_account}")
+
+            if product_account.data.first_price_account_key != PublicKey(0):
+                price_account = program_admin.get_price_account(
+                    product_account.data.first_price_account_key
+                )
+                print(f"    Price: {price_account}")
 
         mapping_key = mapping_account.data.next_mapping_account_key
 

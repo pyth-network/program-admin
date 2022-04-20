@@ -186,12 +186,12 @@ def parse_account(response: Dict[str, Any]) -> Optional[PythAccount]:
 
     if isinstance(account_data, MappingData):
         return PythMappingAccount(**account_args)
-    elif isinstance(account_data, ProductData):
+    if isinstance(account_data, ProductData):
         return PythProductAccount(**account_args)
-    elif isinstance(account_data, PriceData):
+    if isinstance(account_data, PriceData):
         return PythPriceAccount(**account_args)
-    else:
-        raise RuntimeError("Invalid account data")
+
+    raise RuntimeError("Invalid account data")
 
 
 def parse_publishers_json(file_path: Path) -> Publishers:
