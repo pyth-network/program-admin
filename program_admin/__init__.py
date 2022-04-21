@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
 
 from loguru import logger
 from solana import system_program
@@ -9,7 +9,7 @@ from solana.rpc.async_api import AsyncClient
 from solana.rpc.types import TxOpts
 from solana.transaction import Transaction, TransactionInstruction
 
-from program_admin import instructions
+from program_admin import instructions as pyth_program
 from program_admin.keys import generate_keypair, load_keypair
 from program_admin.parsing import (
     parse_account,
@@ -63,8 +63,16 @@ class ProgramAdmin:
         self._product_accounts: Dict[PublicKey, PythProductAccount] = {}
         self._price_accounts: Dict[PublicKey, PythPriceAccount] = {}
 
-    async def fetch_program_accounts(self):
+    async def fetch_minimum_balance(self, size: int) -> int:
+        """
+        Return the minimum balance in lamports for a new account to be rent-exempt.
+        """
         async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
+            return (await client.get_minimum_balance_for_rent_exemption(size))["result"]
+
+    async def refresh_program_accounts(self):
+        async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
+            logger.debug("Refreshing program accounts")
             result = (
                 await client.get_program_accounts(
                     pubkey=self.program_key, encoding="base64"
@@ -78,30 +86,29 @@ class ProgramAdmin:
                     continue
 
                 if isinstance(account, PythMappingAccount):
+                    logger.debug(f"Found mapping account: {account.public_key}")
                     self._mapping_accounts[account.public_key] = account
 
                 if isinstance(account, PythProductAccount):
+                    logger.debug(f"Found product account: {account.public_key}")
                     self._product_accounts[account.public_key] = account
 
                 if isinstance(account, PythPriceAccount):
+                    logger.debug(f"Found price account: {account.public_key}")
                     self._price_accounts[account.public_key] = account
 
     async def send_transaction(
-        self, tx_instructions: List[TransactionInstruction], signers: List[Keypair]
+        self, tx_instructions: List[TransactionInstruction], tx_signers: List[Keypair]
     ):
         async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
             blockhash = await recent_blockhash(client)
-            transaction = Transaction(
-                recent_blockhash=blockhash, fee_payer=signers[0].public_key
-            )
+            transaction = Transaction(recent_blockhash=blockhash)
 
             transaction.add(*tx_instructions)
-            transaction.sign(*signers)
+            transaction.sign(*tx_signers)
 
-            response = await client.send_transaction(
-                transaction,
-                *signers,
-                recent_blockhash=blockhash,
+            response = await client.send_raw_transaction(
+                transaction.serialize(),
                 opts=TxOpts(skip_confirmation=False),
             )
             logger.debug(f"Transaction: {response['result']}")
@@ -121,123 +128,160 @@ class ProgramAdmin:
         return mapping_chain[0]
 
     async def sync(self, products_path: str, publishers_path: str):
-        program_keypair = load_keypair("program")
-        mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
+        # Fetch program accounts from the network
+        await self.refresh_program_accounts()
 
-        #
-        # Fetch program accounts
-        #
-        await self.fetch_program_accounts()
+        # Sync mapping accounts
+        mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions()
 
-        #
-        # Ensure mapping account exists and is initialized
-        #
-        mapping_0_keypair = load_keypair("mapping_0", generate=True)
+        if mapping_instructions:
+            await self.send_transaction(mapping_instructions, mapping_keypairs)
+            await self.refresh_program_accounts()
 
-        if not mapping_chain:
-            create_account_ix = system_program.create_account(
-                system_program.CreateAccountParams(
-                    from_pubkey=program_keypair.public_key,
-                    new_account_pubkey=mapping_0_keypair.public_key,
-                    # FIXME: Change to minimum rent-exempt amount
-                    lamports=1 * SOL_LAMPORTS,
-                    space=MAPPING_ACCOUNT_SIZE,
-                    program_id=self.program_key,
-                )
-            )
-            init_mapping_ix = instructions.init_mapping(
-                self.program_key,
-                program_keypair.public_key,
-                mapping_0_keypair.public_key,
-            )
-            logger.info("Creating first mapping account")
-            await self.send_transaction(
-                [create_account_ix, init_mapping_ix],
-                [program_keypair, mapping_0_keypair],
-            )
-        else:
-            mapping_account = self.get_mapping_account(mapping_0_keypair.public_key)
+        # TODO: Ensure tail mapping account has enough space for new product accounts
 
-            if mapping_account.data.product_count >= MAPPING_ACCOUNT_PRODUCT_LIMIT:
-                # FIXME: Implement creation of next mapping account if first one is full
-                raise RuntimeError("No more room in first mapping account")
-
-        #
-        # Create new products
-        #
+        # Sync product/price accounts
         ref_products = parse_products_json(Path(products_path))
         ref_publishers = parse_publishers_json(Path(publishers_path))
-        program_symbols = self.list_program_symbols()
-        reference_symbols = set()
-        jump_symbols: Dict[str, str] = {}
 
-        for jump_symbol in ref_publishers["permissions"].keys():
-            symbol = ref_products[jump_symbol]["metadata"]["symbol"]
-            reference_symbols.add(symbol)
-            # Keep track of symbol -> jump_symbol mapping
-            jump_symbols[symbol] = jump_symbol
+        for jump_symbol, price_accounts in ref_publishers["permissions"].items():
+            ref_product = ref_products[jump_symbol]
+            publishers = price_accounts["price"]
 
-        new_symbols = reference_symbols - program_symbols
+            (
+                product_instructions,
+                product_keypairs,
+            ) = await self.sync_product_instructions(ref_product, publishers)
 
-        for symbol in new_symbols:
-            mapping_keypair = load_keypair(mapping_chain[-1])
-            product_keypair = load_keypair(
-                f"product_{jump_symbols[symbol]}", generate=True
-            )
-            price_keypair = load_keypair(f"price_{jump_symbols[symbol]}", generate=True)
-            create_product_account_ix = system_program.create_account(
-                system_program.CreateAccountParams(
-                    from_pubkey=program_keypair.public_key,
-                    new_account_pubkey=product_keypair.public_key,
-                    # FIXME: Change to minimum rent-exempt amount
-                    lamports=1 * SOL_LAMPORTS,
-                    space=PRODUCT_ACCOUNT_SIZE,
-                    program_id=self.program_key,
+            if product_instructions:
+                await self.send_transaction(product_instructions, product_keypairs)
+
+        # TODO: Sync publisher keys
+
+    async def sync_mapping_instructions(
+        self,
+    ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
+        mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
+        program_keypair = load_keypair("program")
+        funding_keypair = program_keypair
+        mapping_0_keypair = load_keypair("mapping_0", generate=True)
+        instruction_list: List[TransactionInstruction] = []
+
+        if not mapping_chain:
+            logger.info("Creating new mapping account")
+            instruction_list.append(
+                system_program.create_account(
+                    system_program.CreateAccountParams(
+                        from_pubkey=funding_keypair.public_key,
+                        new_account_pubkey=mapping_0_keypair.public_key,
+                        # FIXME: Change to minimum rent-exempt amount
+                        lamports=await self.fetch_minimum_balance(MAPPING_ACCOUNT_SIZE),
+                        space=MAPPING_ACCOUNT_SIZE,
+                        program_id=self.program_key,
+                    )
                 )
             )
-            add_product_ix = instructions.add_product(
-                self.program_key,
-                program_keypair.public_key,
-                mapping_keypair.public_key,
-                product_keypair.public_key,
-            )
-            update_product_ix = instructions.update_product(
-                self.program_key,
-                program_keypair.public_key,
-                product_keypair.public_key,
-                ref_products[jump_symbols[symbol]]["metadata"],
-            )
-            create_price_account_ix = system_program.create_account(
-                system_program.CreateAccountParams(
-                    from_pubkey=program_keypair.public_key,
-                    new_account_pubkey=price_keypair.public_key,
-                    # FIXME: Change to minimum rent-exempt amount
-                    lamports=1 * SOL_LAMPORTS,
-                    space=PRICE_ACCOUNT_SIZE,
-                    program_id=self.program_key,
+            instruction_list.append(
+                pyth_program.init_mapping(
+                    self.program_key,
+                    funding_keypair.public_key,
+                    mapping_0_keypair.public_key,
                 )
             )
-            add_price_ix = instructions.add_price(
-                self.program_key,
-                program_keypair.public_key,
-                product_keypair.public_key,
-                price_keypair.public_key,
-                ref_products[jump_symbols[symbol]]["exponent"],
+
+        return (instruction_list, [funding_keypair, mapping_0_keypair])
+
+    async def sync_product_instructions(
+        self,
+        product: Product,
+        _publishers: List[str],
+    ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
+        instructions: List[TransactionInstruction] = []
+        funding_keypair = load_keypair("program")
+        mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
+        mapping_keypair = load_keypair(mapping_chain[-1])
+        product_keypair = load_keypair(
+            f"product_{product['jump_symbol']}", generate=True
+        )
+        product_account = self._product_accounts.get(product_keypair.public_key)
+        price_keypair = load_keypair(f"price_{product['jump_symbol']}", generate=True)
+        price_account = self._price_accounts.get(price_keypair.public_key)
+
+        if not product_account:
+            logger.info(f"Creating new product account for {product['jump_symbol']}")
+            instructions.append(
+                system_program.create_account(
+                    system_program.CreateAccountParams(
+                        from_pubkey=funding_keypair.public_key,
+                        new_account_pubkey=product_keypair.public_key,
+                        lamports=await self.fetch_minimum_balance(PRODUCT_ACCOUNT_SIZE),
+                        space=PRODUCT_ACCOUNT_SIZE,
+                        program_id=self.program_key,
+                    )
+                )
+            )
+            instructions.append(
+                pyth_program.add_product(
+                    self.program_key,
+                    funding_keypair.public_key,
+                    mapping_keypair.public_key,
+                    product_keypair.public_key,
+                )
+            )
+            instructions.append(
+                pyth_program.update_product(
+                    self.program_key,
+                    funding_keypair.public_key,
+                    product_keypair.public_key,
+                    product["metadata"],
+                )
+            )
+            instructions.append(
+                system_program.create_account(
+                    system_program.CreateAccountParams(
+                        from_pubkey=funding_keypair.public_key,
+                        new_account_pubkey=price_keypair.public_key,
+                        lamports=await self.fetch_minimum_balance(PRICE_ACCOUNT_SIZE),
+                        space=PRICE_ACCOUNT_SIZE,
+                        program_id=self.program_key,
+                    )
+                )
+            )
+            instructions.append(
+                pyth_program.add_price(
+                    self.program_key,
+                    funding_keypair.public_key,
+                    product_keypair.public_key,
+                    price_keypair.public_key,
+                    product["exponent"],
+                )
             )
 
-            logger.info(f"Creating {symbol} product account")
-            await self.send_transaction(
-                [
-                    create_product_account_ix,
-                    add_product_ix,
-                    update_product_ix,
-                    create_price_account_ix,
-                    add_price_ix,
-                ],
-                [program_keypair, mapping_keypair, product_keypair, price_keypair],
-            )
+        # When product/price account exists, we check if metadata is up to date
+        if product_account and price_account:
+            same_product_metadata = True
 
-        return
+            for key, value in product["metadata"].items():
+                if product_account.data.metadata.get(key) != value:
+                    same_product_metadata = False
+                    break
+
+            if not same_product_metadata:
+                instructions.append(
+                    pyth_program.update_product(
+                        self.program_key,
+                        funding_keypair.public_key,
+                        product_keypair.public_key,
+                        product["metadata"],
+                    )
+                )
+
+        # TODO: Sync publishers here
+
+        return (
+            instructions,
+            [funding_keypair, mapping_keypair, product_keypair, price_keypair],
+        )
 
     def list_program_symbols(self) -> Set[str]:
         symbols = set()
@@ -246,37 +290,3 @@ class ProgramAdmin:
             symbols.add(account.data.metadata["symbol"])
 
         return symbols
-
-    # def list_reference_publishers(self, jump_symbol: str) -> Set[str]:
-    #    # FIXME: Handle multiple price accounts
-    #    return set(self.publishers["permissions"][jump_symbol]["price"])
-
-    # def list_program_publishers(self, jump_symbol: str) -> Set[str]:
-    #    """
-    #    Return a list of publisher IDs for the corresponding product account of
-    #    the given symbol.
-    #    """
-    #    symbol = self.products[jump_symbol]["metadata"]["symbol"]
-    #    symbol_product_data = None
-
-    #    for _key, account in self.product_accounts.items():
-    #        product_data = cast(ProductData, account.data)
-
-    #        if product_data.metadata["symbol"] == symbol:
-    #            symbol_product_data = product_data
-
-    #    if not symbol_product_data:
-    #        raise RuntimeError(f"No product account for symbol {symbol}")
-
-    #    # FIXME: Handle multiple price accounts
-    #    price_account = self.price_accounts[symbol_product_data.first_price_account_key]
-    #    price_components = cast(PriceData, price_account.data).price_components
-    #    publishers: Set[str] = set()
-
-    #    for component in price_components:
-    #        if component.publisher_key in self.publishers["names"]:
-    #            publishers.add(self.publishers["names"][component.publisher_key])
-    #        else:
-    #            publishers.add(f"??? ({str(component.publisher_key)})")
-
-    #    return publishers

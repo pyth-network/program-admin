@@ -21,7 +21,7 @@ def list_accounts(network, program_key):
         program_key=program_key,
     )
 
-    asyncio.run(program_admin.fetch_program_accounts())
+    asyncio.run(program_admin.refresh_program_accounts())
 
     try:
         mapping_key = program_admin.get_first_mapping_key()
@@ -59,7 +59,6 @@ def sync(network, program_key, products, publishers):
         program_key=program_key,
     )
 
-    asyncio.run(program_admin.fetch_program_accounts())
     asyncio.run(
         program_admin.sync(
             products_path=products,
