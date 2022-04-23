@@ -1,6 +1,6 @@
 from typing import Dict
 
-from construct import Int32sl, Int32ul, Struct
+from construct import Bytes, Int32sl, Int32ul, Struct
 from solana.publickey import PublicKey
 from solana.transaction import AccountMeta, TransactionInstruction
 
@@ -12,6 +12,8 @@ COMMAND_INIT_MAPPING = 0
 COMMAND_ADD_PRODUCT = 2
 COMMAND_UPD_PRODUCT = 3
 COMMAND_ADD_PRICE = 4
+COMMAND_ADD_PUBLISHER = 5
+COMMAND_DEL_PUBLISHER = 6
 PRICE_TYPE_PRICE = 1
 PROGRAM_VERSION = 2
 
@@ -111,7 +113,7 @@ def add_price(
     - new price account (signer, writable)
     """
     layout = Struct(
-        "version" / Int32ul, "command" / Int32ul, "exponent" / Int32sl, "type" / Int32ul
+        "version" / Int32ul, "command" / Int32sl, "exponent" / Int32sl, "type" / Int32ul
     )
     data = layout.build(
         dict(
@@ -128,6 +130,41 @@ def add_price(
             AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=product_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=new_price_key, is_signer=True, is_writable=True),
+        ],
+        program_id=program_key,
+    )
+
+
+def toggle_publisher(
+    program_key: PublicKey,
+    funding_key: PublicKey,
+    price_account_key: PublicKey,
+    publisher_key: PublicKey,
+    status: bool,
+) -> TransactionInstruction:
+    """
+    Pyth program add_publisher instruction
+
+    accounts:
+    - funding account (signer, writable)
+    - price account (signer, writable)
+    """
+    layout = Struct(
+        "version" / Int32ul, "command" / Int32sl, "publisher_key" / Bytes(32)
+    )
+    data = layout.build(
+        dict(
+            version=PROGRAM_VERSION,
+            command=(COMMAND_ADD_PUBLISHER if status else COMMAND_DEL_PUBLISHER),
+            publisher_key=bytes(publisher_key),
+        )
+    )
+
+    return TransactionInstruction(
+        data=data,
+        keys=[
+            AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=price_account_key, is_signer=True, is_writable=True),
         ],
         program_id=program_key,
     )

@@ -3,6 +3,8 @@ from typing import Dict, List
 from solana.blockhash import Blockhash
 from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
+from solana.transaction import SIG_LENGTH, Transaction
+from solana.utils import shortvec_encoding as shortvec
 
 from program_admin.types import PythMappingAccount
 
@@ -17,6 +19,28 @@ async def recent_blockhash(client: AsyncClient) -> Blockhash:
     blockhash_response = await client.get_recent_blockhash()
 
     return Blockhash(blockhash_response["result"]["value"]["blockhash"])
+
+
+def compute_transaction_size(transaction: Transaction) -> int:
+    """
+    Returns the total over-the-wire size of a transaction
+
+    This is the same code from solana.transaction.Transaction.__serialize()
+    """
+    payload = bytearray()
+    signature_count = shortvec.encode_length(len(transaction.signatures))
+
+    payload.extend(signature_count)
+
+    for sig_pair in transaction.signatures:
+        if sig_pair.signature:
+            payload.extend(sig_pair.signature)
+        else:
+            payload.extend(bytearray(SIG_LENGTH))
+
+    payload.extend(transaction.serialize_message())
+
+    return len(payload)
 
 
 def encode_product_metadata(data: Dict[str, str]) -> bytes:

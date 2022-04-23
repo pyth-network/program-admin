@@ -1,13 +1,14 @@
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Tuple
 
 from loguru import logger
 from solana import system_program
 from solana.keypair import Keypair
 from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
+from solana.rpc.commitment import Commitment
 from solana.rpc.types import TxOpts
-from solana.transaction import Transaction, TransactionInstruction
+from solana.transaction import PACKET_DATA_SIZE, Transaction, TransactionInstruction
 
 from program_admin import instructions as pyth_program
 from program_admin.keys import generate_keypair, load_keypair
@@ -17,22 +18,18 @@ from program_admin.parsing import (
     parse_publishers_json,
 )
 from program_admin.types import (
-    MappingData,
     Network,
-    PriceData,
     Product,
-    ProductData,
     Publishers,
     PythMappingAccount,
     PythPriceAccount,
     PythProductAccount,
 )
 from program_admin.util import (
-    MAPPING_ACCOUNT_PRODUCT_LIMIT,
     MAPPING_ACCOUNT_SIZE,
     PRICE_ACCOUNT_SIZE,
     PRODUCT_ACCOUNT_SIZE,
-    SOL_LAMPORTS,
+    compute_transaction_size,
     recent_blockhash,
     sort_mapping_account_keys,
 )
@@ -63,6 +60,20 @@ class ProgramAdmin:
         self._product_accounts: Dict[PublicKey, PythProductAccount] = {}
         self._price_accounts: Dict[PublicKey, PythPriceAccount] = {}
 
+    def get_mapping_account(self, key: PublicKey) -> PythMappingAccount:
+        return self._mapping_accounts[key]
+
+    def get_price_account(self, key: PublicKey) -> PythPriceAccount:
+        return self._price_accounts[key]
+
+    def get_product_account(self, key: PublicKey) -> PythProductAccount:
+        return self._product_accounts[key]
+
+    def get_first_mapping_key(self) -> PublicKey:
+        mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
+
+        return mapping_chain[0]
+
     async def fetch_minimum_balance(self, size: int) -> int:
         """
         Return the minimum balance in lamports for a new account to be rent-exempt.
@@ -86,46 +97,73 @@ class ProgramAdmin:
                     continue
 
                 if isinstance(account, PythMappingAccount):
-                    logger.debug(f"Found mapping account: {account.public_key}")
                     self._mapping_accounts[account.public_key] = account
 
                 if isinstance(account, PythProductAccount):
-                    logger.debug(f"Found product account: {account.public_key}")
                     self._product_accounts[account.public_key] = account
 
                 if isinstance(account, PythPriceAccount):
-                    logger.debug(f"Found price account: {account.public_key}")
                     self._price_accounts[account.public_key] = account
 
+            logger.debug(f"Found {len(self._mapping_accounts)} mapping account(s)")
+            logger.debug(f"Found {len(self._product_accounts)} product account(s)")
+            logger.debug(f"Found {len(self._price_accounts)} price account(s)")
+
     async def send_transaction(
-        self, tx_instructions: List[TransactionInstruction], tx_signers: List[Keypair]
+        self, instructions: List[TransactionInstruction], signers: List[Keypair]
     ):
+        if not instructions:
+            return
+
         async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
+            logger.debug(f"Sending {len(instructions)} instructions")
+
             blockhash = await recent_blockhash(client)
             transaction = Transaction(recent_blockhash=blockhash)
 
-            transaction.add(*tx_instructions)
-            transaction.sign(*tx_signers)
+            transaction.add(instructions[0])
+            transaction.sign(*signers)
 
+            ix_index = 1
+
+            # FIXME: Ideally, we would compute the exact additional size of each
+            # instruction, add it to the current transaction size and compare
+            # that with PACKET_DATA_SIZE. But there is currently no method that
+            # returns that information (and no straightforward way to remove an
+            # instruction from a transaction), so we stop adding instructions to
+            # a transaction once it reaches half of the maximum size (with the
+            # assumption that no single instruction will add more than
+            # PACKET_DATA_SIZE/2 bytes to the transaction).
+            #
+            # FIXME: Also, we probably want to give control of the instructions
+            # that go to a transaction to the code that generates the
+            # instructions. That way, we can ensure that mapping/product/price
+            # accounts are always created and initialized in a single
+            # transaction.
+            while (
+                compute_transaction_size(transaction) < (PACKET_DATA_SIZE / 2)
+                and instructions[ix_index:]
+            ):
+                transaction.add(instructions[ix_index])
+                transaction.sign(*signers)
+                ix_index += 1
+
+            commitment = Commitment(
+                "confirmed" if self.network == "localhost" else "finalized"
+            )
             response = await client.send_raw_transaction(
                 transaction.serialize(),
-                opts=TxOpts(skip_confirmation=False),
+                opts=TxOpts(skip_confirmation=False, preflight_commitment=commitment),
             )
+
+            logger.debug(f"Sent {ix_index} instructions")
             logger.debug(f"Transaction: {response['result']}")
 
-    def get_mapping_account(self, key: PublicKey) -> PythMappingAccount:
-        return self._mapping_accounts[key]
+            remaining_instructions = instructions[ix_index:]
 
-    def get_price_account(self, key: PublicKey) -> PythPriceAccount:
-        return self._price_accounts[key]
-
-    def get_product_account(self, key: PublicKey) -> PythProductAccount:
-        return self._product_accounts[key]
-
-    def get_first_mapping_key(self) -> PublicKey:
-        mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
-
-        return mapping_chain[0]
+            if remaining_instructions:
+                logger.debug("Sending remaining instructions in separate transaction")
+                await self.send_transaction(remaining_instructions, signers)
 
     async def sync(self, products_path: str, publishers_path: str):
         # Fetch program accounts from the network
@@ -143,20 +181,33 @@ class ProgramAdmin:
         # Sync product/price accounts
         ref_products = parse_products_json(Path(products_path))
         ref_publishers = parse_publishers_json(Path(publishers_path))
+        product_updates: bool = False
 
-        for jump_symbol, price_accounts in ref_publishers["permissions"].items():
+        for jump_symbol, _price_account_map in ref_publishers["permissions"].items():
             ref_product = ref_products[jump_symbol]
-            publishers = price_accounts["price"]
 
             (
                 product_instructions,
                 product_keypairs,
-            ) = await self.sync_product_instructions(ref_product, publishers)
+            ) = await self.sync_product_instructions(ref_product)
 
             if product_instructions:
+                product_updates = True
                 await self.send_transaction(product_instructions, product_keypairs)
 
-        # TODO: Sync publisher keys
+        if product_updates:
+            await self.refresh_program_accounts()
+
+        for jump_symbol, _price_account_map in ref_publishers["permissions"].items():
+            ref_product = ref_products[jump_symbol]
+
+            (
+                price_instructions,
+                price_keypairs,
+            ) = await self.sync_price_instructions(ref_product, ref_publishers)
+
+            if price_instructions:
+                await self.send_transaction(price_instructions, price_keypairs)
 
     async def sync_mapping_instructions(
         self,
@@ -165,11 +216,13 @@ class ProgramAdmin:
         program_keypair = load_keypair("program")
         funding_keypair = program_keypair
         mapping_0_keypair = load_keypair("mapping_0", generate=True)
-        instruction_list: List[TransactionInstruction] = []
+        instructions: List[TransactionInstruction] = []
 
         if not mapping_chain:
             logger.info("Creating new mapping account")
-            instruction_list.append(
+
+            logger.debug("Building system.program.create_account instruction")
+            instructions.append(
                 system_program.create_account(
                     system_program.CreateAccountParams(
                         from_pubkey=funding_keypair.public_key,
@@ -181,7 +234,9 @@ class ProgramAdmin:
                     )
                 )
             )
-            instruction_list.append(
+
+            logger.debug("Building pyth_program.init_mapping instruction")
+            instructions.append(
                 pyth_program.init_mapping(
                     self.program_key,
                     funding_keypair.public_key,
@@ -189,12 +244,11 @@ class ProgramAdmin:
                 )
             )
 
-        return (instruction_list, [funding_keypair, mapping_0_keypair])
+        return (instructions, [funding_keypair, mapping_0_keypair])
 
     async def sync_product_instructions(
         self,
         product: Product,
-        _publishers: List[str],
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         instructions: List[TransactionInstruction] = []
         funding_keypair = load_keypair("program")
@@ -209,6 +263,7 @@ class ProgramAdmin:
 
         if not product_account:
             logger.info(f"Creating new product account for {product['jump_symbol']}")
+            logger.debug("Building system_program.create_account instruction")
             instructions.append(
                 system_program.create_account(
                     system_program.CreateAccountParams(
@@ -220,6 +275,7 @@ class ProgramAdmin:
                     )
                 )
             )
+            logger.debug("Building pyth_program.add_product instruction")
             instructions.append(
                 pyth_program.add_product(
                     self.program_key,
@@ -228,6 +284,7 @@ class ProgramAdmin:
                     product_keypair.public_key,
                 )
             )
+            logger.debug("Building pyth_program.update_product instruction")
             instructions.append(
                 pyth_program.update_product(
                     self.program_key,
@@ -236,6 +293,10 @@ class ProgramAdmin:
                     product["metadata"],
                 )
             )
+
+        if not price_account:
+            logger.info(f"Creating new price account for {product['jump_symbol']}")
+            logger.debug("Building system_program.create_account instruction")
             instructions.append(
                 system_program.create_account(
                     system_program.CreateAccountParams(
@@ -247,6 +308,7 @@ class ProgramAdmin:
                     )
                 )
             )
+            logger.debug("Building pyth_program.add_price instruction")
             instructions.append(
                 pyth_program.add_price(
                     self.program_key,
@@ -267,6 +329,10 @@ class ProgramAdmin:
                     break
 
             if not same_product_metadata:
+                logger.info(
+                    f"Updating product account metadata for {product['jump_symbol']}"
+                )
+                logger.debug("Building pyth_program.update_product instruction")
                 instructions.append(
                     pyth_program.update_product(
                         self.program_key,
@@ -276,17 +342,52 @@ class ProgramAdmin:
                     )
                 )
 
-        # TODO: Sync publishers here
-
         return (
             instructions,
             [funding_keypair, mapping_keypair, product_keypair, price_keypair],
         )
 
-    def list_program_symbols(self) -> Set[str]:
-        symbols = set()
+    async def sync_price_instructions(
+        self,
+        product: Product,
+        publishers: Publishers,
+    ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
+        instructions: List[TransactionInstruction] = []
+        funding_keypair = load_keypair("program")
+        price_keypair = load_keypair(f"price_{product['jump_symbol']}")
+        price_account = self.get_price_account(price_keypair.public_key)
+        current_publishers = {
+            publishers["names"][component.publisher_key]
+            for component in price_account.data.price_components
+        }
+        reference_publishers = set(
+            publishers["permissions"][product["jump_symbol"]]["price"]
+        )
+        new_publishers = reference_publishers - current_publishers
+        old_publishers = current_publishers - reference_publishers
 
-        for _key, account in self._product_accounts.items():
-            symbols.add(account.data.metadata["symbol"])
+        for jump_symbol in old_publishers:
+            logger.debug("Building pyth_program.del_publisher instruction")
+            instructions.append(
+                pyth_program.toggle_publisher(
+                    self.program_key,
+                    funding_keypair.public_key,
+                    price_keypair.public_key,
+                    publishers["keys"][jump_symbol],
+                    status=False,
+                )
+            )
 
-        return symbols
+        for jump_symbol in new_publishers:
+            logger.debug("Building pyth_program.add_publisher instruction")
+            instructions.append(
+                pyth_program.toggle_publisher(
+                    self.program_key,
+                    funding_keypair.public_key,
+                    price_keypair.public_key,
+                    publishers["keys"][jump_symbol],
+                    status=True,
+                )
+            )
+
+        return (instructions, [funding_keypair, price_keypair])
