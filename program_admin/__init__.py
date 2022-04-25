@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Literal, Tuple
 
 from loguru import logger
 from solana import system_program
@@ -110,7 +110,10 @@ class ProgramAdmin:
             logger.debug(f"Found {len(self._price_accounts)} price account(s)")
 
     async def send_transaction(
-        self, instructions: List[TransactionInstruction], signers: List[Keypair]
+        self,
+        instructions: List[TransactionInstruction],
+        signers: List[Keypair],
+        commitment: Literal["confirmed", "finalized", "processed"] = "finalized",
     ):
         if not instructions:
             return
@@ -130,16 +133,15 @@ class ProgramAdmin:
             # instruction, add it to the current transaction size and compare
             # that with PACKET_DATA_SIZE. But there is currently no method that
             # returns that information (and no straightforward way to remove an
-            # instruction from a transaction), so we stop adding instructions to
-            # a transaction once it reaches half of the maximum size (with the
-            # assumption that no single instruction will add more than
-            # PACKET_DATA_SIZE/2 bytes to the transaction).
+            # instruction from a transaction if it becomes too large), so we
+            # stop adding instructions to a transaction once it reaches half of
+            # the maximum size (with the assumption that no single instruction
+            # will add more than PACKET_DATA_SIZE/2 bytes to a transaction).
             #
             # FIXME: Also, we probably want to give control of the instructions
-            # that go to a transaction to the code that generates the
-            # instructions. That way, we can ensure that mapping/product/price
-            # accounts are always created and initialized in a single
-            # transaction.
+            # that go in a transaction to the caller. That way, we can ensure
+            # that mapping/product/price accounts are always created and
+            # initialized atomically.
             while (
                 compute_transaction_size(transaction) < (PACKET_DATA_SIZE / 2)
                 and instructions[ix_index:]
@@ -148,12 +150,11 @@ class ProgramAdmin:
                 transaction.sign(*signers)
                 ix_index += 1
 
-            commitment = Commitment(
-                "confirmed" if self.network == "localhost" else "finalized"
-            )
             response = await client.send_raw_transaction(
                 transaction.serialize(),
-                opts=TxOpts(skip_confirmation=False, preflight_commitment=commitment),
+                opts=TxOpts(
+                    skip_confirmation=False, preflight_commitment=Commitment(commitment)
+                ),
             )
 
             logger.debug(f"Sent {ix_index} instructions")
@@ -173,10 +174,14 @@ class ProgramAdmin:
         mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions()
 
         if mapping_instructions:
-            await self.send_transaction(mapping_instructions, mapping_keypairs)
+            await self.send_transaction(
+                mapping_instructions, mapping_keypairs, commitment="finalized"
+            )
             await self.refresh_program_accounts()
 
-        # TODO: Ensure tail mapping account has enough space for new product accounts
+        # FIXME: We should check if the mapping account has enough space to
+        # add/remove new products. That is not urgent because we are around 10%
+        # of the first mapping account capacity.
 
         # Sync product/price accounts
         ref_products = parse_products_json(Path(products_path))
@@ -198,6 +203,7 @@ class ProgramAdmin:
         if product_updates:
             await self.refresh_program_accounts()
 
+        # Sync publishers
         for jump_symbol, _price_account_map in ref_publishers["permissions"].items():
             ref_product = ref_products[jump_symbol]
 
@@ -207,7 +213,9 @@ class ProgramAdmin:
             ) = await self.sync_price_instructions(ref_product, ref_publishers)
 
             if price_instructions:
-                await self.send_transaction(price_instructions, price_keypairs)
+                await self.send_transaction(
+                    price_instructions, price_keypairs, commitment="confirmed"
+                )
 
     async def sync_mapping_instructions(
         self,
