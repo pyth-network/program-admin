@@ -11,7 +11,7 @@ from solana.rpc.types import TxOpts
 from solana.transaction import PACKET_DATA_SIZE, Transaction, TransactionInstruction
 
 from program_admin import instructions as pyth_program
-from program_admin.keys import generate_keypair, load_keypair
+from program_admin.keys import load_keypair
 from program_admin.parsing import (
     parse_account,
     parse_products_json,
@@ -44,6 +44,7 @@ RPC_ENDPOINTS: Dict[Network, str] = {
 
 class ProgramAdmin:
     network: Network
+    key_dir: Path
     program_key: PublicKey
     _mapping_accounts: Dict[PublicKey, PythMappingAccount]
     _product_accounts: Dict[PublicKey, PythProductAccount]
@@ -52,9 +53,11 @@ class ProgramAdmin:
     def __init__(
         self,
         network: Network,
+        key_dir: str,
         program_key: str,
     ):
         self.network = network
+        self.key_dir = Path(key_dir)
         self.program_key = PublicKey(program_key)
         self._mapping_accounts: Dict[PublicKey, PythMappingAccount] = {}
         self._product_accounts: Dict[PublicKey, PythProductAccount] = {}
@@ -81,12 +84,16 @@ class ProgramAdmin:
         async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
             return (await client.get_minimum_balance_for_rent_exemption(size))["result"]
 
-    async def refresh_program_accounts(self):
+    async def refresh_program_accounts(
+        self, commitment: Literal["confirmed", "finalized"] = "finalized"
+    ):
         async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
             logger.debug("Refreshing program accounts")
             result = (
                 await client.get_program_accounts(
-                    pubkey=self.program_key, encoding="base64"
+                    pubkey=self.program_key,
+                    encoding="base64",
+                    commitment=Commitment(commitment),
                 )
             )["result"]
 
@@ -221,9 +228,11 @@ class ProgramAdmin:
         self,
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
-        program_keypair = load_keypair("program")
+        program_keypair = load_keypair("program", key_dir=self.key_dir)
         funding_keypair = program_keypair
-        mapping_0_keypair = load_keypair("mapping_0", generate=True)
+        mapping_0_keypair = load_keypair(
+            "mapping_0", key_dir=self.key_dir, generate=True
+        )
         instructions: List[TransactionInstruction] = []
 
         if not mapping_chain:
@@ -259,14 +268,16 @@ class ProgramAdmin:
         product: Product,
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         instructions: List[TransactionInstruction] = []
-        funding_keypair = load_keypair("program")
+        funding_keypair = load_keypair("program", key_dir=self.key_dir)
         mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
-        mapping_keypair = load_keypair(mapping_chain[-1])
+        mapping_keypair = load_keypair(mapping_chain[-1], key_dir=self.key_dir)
         product_keypair = load_keypair(
-            f"product_{product['jump_symbol']}", generate=True
+            f"product_{product['jump_symbol']}", key_dir=self.key_dir, generate=True
         )
         product_account = self._product_accounts.get(product_keypair.public_key)
-        price_keypair = load_keypair(f"price_{product['jump_symbol']}", generate=True)
+        price_keypair = load_keypair(
+            f"price_{product['jump_symbol']}", key_dir=self.key_dir, generate=True
+        )
         price_account = self._price_accounts.get(price_keypair.public_key)
 
         if not product_account:
@@ -361,8 +372,10 @@ class ProgramAdmin:
         publishers: Publishers,
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         instructions: List[TransactionInstruction] = []
-        funding_keypair = load_keypair("program")
-        price_keypair = load_keypair(f"price_{product['jump_symbol']}")
+        funding_keypair = load_keypair("program", key_dir=self.key_dir)
+        price_keypair = load_keypair(
+            f"price_{product['jump_symbol']}", key_dir=self.key_dir
+        )
         price_account = self.get_price_account(price_keypair.public_key)
         current_publishers = {
             publishers["names"][component.publisher_key]
