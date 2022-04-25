@@ -3,6 +3,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import pytest
 import ujson as json
+
 from program_admin import ProgramAdmin
 
 
@@ -84,28 +85,51 @@ def publishers_json():
 
 # pylint: disable=redefined-outer-name
 @pytest.fixture
-async def pyth_account(key_dir):
+async def pyth_keypair(key_dir):
     process = await asyncio.create_subprocess_shell(
-        f"solana-keygen new -o {key_dir}/program.json && solana airdrop 100 -k {key_dir}/program.json",
+        f"solana-keygen new -o {key_dir}/program.json",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
 
     await process.wait()
+
+    yield f"{key_dir}/program.json"
 
 
 # pylint: disable=redefined-outer-name,unused-argument
 @pytest.fixture
-async def pyth_program(pyth_account):
+async def pyth_program(pyth_keypair):
     process = await asyncio.create_subprocess_shell(
-        "solana program deploy --commitment=finalized tests/oracle.so",
+        f" && solana airdrop 100 -k {pyth_keypair} --commitment=finalized",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
 
     await process.wait()
 
-    stdout, _stderr = await process.communicate()
+    stdout, stderr = await process.communicate()
+    print(f"[cmd exited with {process.returncode}]")
+    if stdout:
+        print(f"[stdout]\n{stdout.decode()}")
+    if stderr:
+        print(f"[stderr]\n{stderr.decode()}")
+
+    process = await asyncio.create_subprocess_shell(
+        f"solana program deploy -k {pyth_keypair} --commitment=finalized tests/oracle.so",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    await process.wait()
+
+    stdout, stderr = await process.communicate()
+    print(f"[cmd exited with {process.returncode}]")
+    if stdout:
+        print(f"[stdout]\n{stdout.decode()}")
+    if stderr:
+        print(f"[stderr]\n{stderr.decode()}")
+
     _, _, program_id = stdout.decode("ascii").split()
 
     yield program_id

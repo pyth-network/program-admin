@@ -23,6 +23,7 @@ def cli():
 def list_accounts(network, program_key, publishers):
     program_admin = ProgramAdmin(
         network=network,
+        key_dir="./keys",
         program_key=program_key,
     )
 
@@ -70,6 +71,7 @@ def list_accounts(network, program_key, publishers):
 def sync(network, program_key, products, publishers):
     program_admin = ProgramAdmin(
         network=network,
+        key_dir="./keys",
         program_key=program_key,
     )
 
