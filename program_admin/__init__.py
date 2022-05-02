@@ -57,10 +57,12 @@ class ProgramAdmin:
         network: Network,
         key_dir: str,
         program_key: str,
+        commitment: Literal["confirmed", "finalized"],
     ):
         self.network = network
         self.key_dir = Path(key_dir)
         self.program_key = PublicKey(program_key)
+        self.commitment = Commitment(commitment)
         self._mapping_accounts: Dict[PublicKey, PythMappingAccount] = {}
         self._product_accounts: Dict[PublicKey, PythProductAccount] = {}
         self._price_accounts: Dict[PublicKey, PythPriceAccount] = {}
@@ -86,16 +88,14 @@ class ProgramAdmin:
         async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
             return (await client.get_minimum_balance_for_rent_exemption(size))["result"]
 
-    async def refresh_program_accounts(
-        self, commitment: Literal["confirmed", "finalized"] = "finalized"
-    ):
+    async def refresh_program_accounts(self):
         async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
             logger.debug("Refreshing program accounts")
             result = (
                 await client.get_program_accounts(
                     pubkey=self.program_key,
                     encoding="base64",
-                    commitment=Commitment(commitment),
+                    commitment=self.commitment,
                 )
             )["result"]
 
@@ -122,7 +122,6 @@ class ProgramAdmin:
         self,
         instructions: List[TransactionInstruction],
         signers: List[Keypair],
-        commitment: Literal["confirmed", "finalized", "processed"] = "finalized",
     ):
         if not instructions:
             return
@@ -162,7 +161,7 @@ class ProgramAdmin:
             response = await client.send_raw_transaction(
                 transaction.serialize(),
                 opts=TxOpts(
-                    skip_confirmation=False, preflight_commitment=Commitment(commitment)
+                    skip_confirmation=False, preflight_commitment=self.commitment
                 ),
             )
 
@@ -188,9 +187,7 @@ class ProgramAdmin:
         mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions()
 
         if mapping_instructions:
-            await self.send_transaction(
-                mapping_instructions, mapping_keypairs, commitment="finalized"
-            )
+            await self.send_transaction(mapping_instructions, mapping_keypairs)
             await self.refresh_program_accounts()
 
         # FIXME: We should check if the mapping account has enough space to
@@ -227,9 +224,7 @@ class ProgramAdmin:
             )
 
             if price_instructions:
-                await self.send_transaction(
-                    price_instructions, price_keypairs, commitment="confirmed"
-                )
+                await self.send_transaction(price_instructions, price_keypairs)
 
     async def sync_mapping_instructions(
         self,

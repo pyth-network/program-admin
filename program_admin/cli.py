@@ -20,11 +20,18 @@ def cli():
 @click.option(
     "--publishers", help="Path to reference publishers file", envvar="PUBLISHERS"
 )
-def list_accounts(network, program_key, publishers):
+@click.option(
+    "--commitment",
+    help="Confirmation level to use",
+    envvar="COMMITMENT",
+    default="finalized",
+)
+def list_accounts(network, program_key, publishers, commitment):
     program_admin = ProgramAdmin(
         network=network,
         key_dir="./keys",
         program_key=program_key,
+        commitment=commitment,
     )
 
     asyncio.run(program_admin.refresh_program_accounts())
@@ -71,11 +78,18 @@ def list_accounts(network, program_key, publishers):
 @click.option(
     "--permissions", help="Path to reference permissions file", envvar="PERMISSIONS"
 )
-def sync(network, program_key, products, publishers, permissions):
+@click.option(
+    "--commitment",
+    help="Confirmation level to use",
+    envvar="COMMITMENT",
+    default="finalized",
+)
+def sync(network, program_key, products, publishers, permissions, commitment):
     program_admin = ProgramAdmin(
         network=network,
         key_dir="./keys",
         program_key=program_key,
+        commitment=commitment,
     )
 
     asyncio.run(
