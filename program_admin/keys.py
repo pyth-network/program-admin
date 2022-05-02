@@ -47,3 +47,9 @@ def load_keypair(
             data = bytes(json.load(file))
 
             return Keypair.from_secret_key(data)
+
+
+def restore_symlink(key: PublicKey, label: str, key_dir: Union[str, Path]):
+    link_path = Path(key_dir) / f"{label}.json"
+
+    link_path.symlink_to(f"account_{key}.json")
