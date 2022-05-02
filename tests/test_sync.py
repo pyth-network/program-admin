@@ -94,9 +94,25 @@ def permissions_json():
         yield jsonfile.name
 
 
-# pylint: disable=redefined-outer-name
 @pytest.fixture
-async def pyth_keypair(key_dir):
+async def validator():
+    process = await asyncio.create_subprocess_shell(
+        "solana-test-validator",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    await asyncio.sleep(5.0)
+
+    yield process.pid
+
+    process.terminate()
+    await process.wait()
+
+
+# pylint: disable=redefined-outer-name,unused-argument
+@pytest.fixture
+async def pyth_keypair(key_dir, validator):
     process = await asyncio.create_subprocess_shell(
         f"solana-keygen new -o {key_dir}/program.json",
         stdout=asyncio.subprocess.PIPE,

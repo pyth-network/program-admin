@@ -42,12 +42,6 @@ jobs:
   run-tests:
     runs-on: ubuntu-latest
     needs: [check-imports, check-formatting, check-linter, check-types]
-    services:
-      test-validator:
-        image: werbitt/solana-test-validator
-        ports:
-          - 8899:8899
-          - 8900:8900
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/python-poetry
