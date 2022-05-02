@@ -47,6 +47,7 @@ jobs:
         image: werbitt/solana-test-validator
         ports:
           - 8899:8899
+          - 8900:8900
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/python-poetry

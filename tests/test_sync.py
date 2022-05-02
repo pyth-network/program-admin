@@ -112,7 +112,7 @@ async def pyth_keypair(key_dir):
 @pytest.fixture
 async def pyth_program(pyth_keypair):
     process = await asyncio.create_subprocess_shell(
-        f"solana airdrop 100 -k {pyth_keypair} --commitment=finalized",
+        f"solana airdrop 100 -k {pyth_keypair} -u localhost",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -127,7 +127,7 @@ async def pyth_program(pyth_keypair):
         print(f"[stderr]\n{stderr.decode()}")
 
     process = await asyncio.create_subprocess_shell(
-        f"solana program deploy -k {pyth_keypair} --commitment=finalized tests/oracle.so",
+        f"solana program deploy -k {pyth_keypair} -u localhost tests/oracle.so",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -154,6 +154,7 @@ async def test_sync(
         network="localhost",
         key_dir=key_dir,
         program_key=pyth_program,
+        commitment="confirmed",
     )
 
     await program_admin.sync(
@@ -162,19 +163,17 @@ async def test_sync(
         permissions_path=permissions_json,
     )
 
-    await program_admin.refresh_program_accounts(commitment="confirmed")
+    await program_admin.refresh_program_accounts()
 
     product_accounts = list(program_admin._product_accounts.values())
-
-    assert product_accounts[0].data.metadata["symbol"] == "Crypto.BTC/USD"
-    assert product_accounts[1].data.metadata["symbol"] == "Equity.US.AAPL/USD"
-
     price_accounts = list(program_admin._price_accounts.values())
+    reference_symbols = ["Crypto.BTC/USD", "Equity.US.AAPL/USD"]
 
-    assert price_accounts[0].data.price_components[0].publisher_key == PublicKey(
-        publishers_json["random"]
-    )
+    with open(publishers_json, encoding="utf8") as file:
+        random_publisher = PublicKey(json.load(file)["random"])
 
-    assert price_accounts[1].data.price_components[0].publisher_key == PublicKey(
-        publishers_json["random"]
-    )
+    assert product_accounts[0].data.metadata["symbol"] in reference_symbols
+    assert product_accounts[1].data.metadata["symbol"] in reference_symbols
+
+    assert price_accounts[0].data.price_components[0].publisher_key == random_publisher
+    assert price_accounts[1].data.price_components[0].publisher_key == random_publisher
