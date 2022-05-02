@@ -38,6 +38,7 @@ extension-pkg-allow-list = "ujson"
 
 [tool.pylint.messages_control]
 disable = [
+    "duplicate-code",
     "fixme",
     "missing-class-docstring",
     "missing-module-docstring",
