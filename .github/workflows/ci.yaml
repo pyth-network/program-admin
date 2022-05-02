@@ -66,5 +66,5 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         env:
           ECR_REGISTRY: ${{ steps.ecr_login.outputs.registry }}
-          ECR_REPOSITORY: account-exporter
+          ECR_REPOSITORY: ${{ github.event.repository.name }}
           IMAGE_TAG: ${{ github.ref_name }}
