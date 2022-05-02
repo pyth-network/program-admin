@@ -12,14 +12,15 @@ from program_admin.types import (
     PriceComponent,
     PriceData,
     PriceInfo,
-    Product,
     ProductData,
     ProductMetadata,
-    Publishers,
     PythAccount,
     PythMappingAccount,
     PythPriceAccount,
     PythProductAccount,
+    ReferencePermissions,
+    ReferenceProduct,
+    ReferencePublishers,
 )
 
 MAGIC_NUMBER = "0xa1b2c3d4"
@@ -194,25 +195,29 @@ def parse_account(response: Dict[str, Any]) -> Optional[PythAccount]:
     raise RuntimeError("Invalid account data")
 
 
-def parse_publishers_json(file_path: Path) -> Publishers:
+def parse_publishers_json(file_path: Path) -> ReferencePublishers:
     with file_path.open() as stream:
         data = json.load(stream)
         keys = {}
         names = {}
 
-        for name, key in data["publisher_keys"].items():
+        for name, key in data.items():
             keys[name] = PublicKey(key)
             names[PublicKey(key)] = name
 
         return {
             "keys": keys,
             "names": names,
-            "permissions": data["publisher_permissions"],
         }
 
 
-def parse_products_json(file_path: Path) -> Dict[str, Product]:
-    products: Dict[str, Product] = {}
+def parse_permissions_json(file_path: Path) -> ReferencePermissions:
+    with file_path.open() as stream:
+        return json.load(stream)
+
+
+def parse_products_json(file_path: Path) -> Dict[str, ReferenceProduct]:
+    products: Dict[str, ReferenceProduct] = {}
 
     with file_path.open() as stream:
         for product in json.load(stream):

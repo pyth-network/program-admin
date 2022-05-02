@@ -2,6 +2,7 @@
 .mypy_cache
 __pycache__
 keys
-publishers.json
+permissions.json
 products.json
+publishers.json
 test-ledger

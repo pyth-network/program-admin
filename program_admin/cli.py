@@ -68,7 +68,10 @@ def list_accounts(network, program_key, publishers):
 @click.option(
     "--publishers", help="Path to reference publishers file", envvar="PUBLISHERS"
 )
-def sync(network, program_key, products, publishers):
+@click.option(
+    "--permissions", help="Path to reference permissions file", envvar="PERMISSIONS"
+)
+def sync(network, program_key, products, publishers, permissions):
     program_admin = ProgramAdmin(
         network=network,
         key_dir="./keys",
@@ -79,6 +82,7 @@ def sync(network, program_key, products, publishers):
         program_admin.sync(
             products_path=products,
             publishers_path=publishers,
+            permissions_path=permissions,
         )
     )
 

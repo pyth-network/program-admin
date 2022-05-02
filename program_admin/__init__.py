@@ -14,16 +14,18 @@ from program_admin import instructions as pyth_program
 from program_admin.keys import load_keypair
 from program_admin.parsing import (
     parse_account,
+    parse_permissions_json,
     parse_products_json,
     parse_publishers_json,
 )
 from program_admin.types import (
     Network,
-    Product,
-    Publishers,
     PythMappingAccount,
     PythPriceAccount,
     PythProductAccount,
+    ReferencePermissions,
+    ReferenceProduct,
+    ReferencePublishers,
 )
 from program_admin.util import (
     MAPPING_ACCOUNT_SIZE,
@@ -173,7 +175,12 @@ class ProgramAdmin:
                 logger.debug("Sending remaining instructions in separate transaction")
                 await self.send_transaction(remaining_instructions, signers)
 
-    async def sync(self, products_path: str, publishers_path: str):
+    async def sync(
+        self,
+        products_path: str,
+        publishers_path: str,
+        permissions_path: str,
+    ):
         # Fetch program accounts from the network
         await self.refresh_program_accounts()
 
@@ -193,9 +200,10 @@ class ProgramAdmin:
         # Sync product/price accounts
         ref_products = parse_products_json(Path(products_path))
         ref_publishers = parse_publishers_json(Path(publishers_path))
+        ref_permissions = parse_permissions_json(Path(permissions_path))
         product_updates: bool = False
 
-        for jump_symbol, _price_account_map in ref_publishers["permissions"].items():
+        for jump_symbol, _price_account_map in ref_permissions.items():
             ref_product = ref_products[jump_symbol]
 
             (
@@ -211,13 +219,12 @@ class ProgramAdmin:
             await self.refresh_program_accounts()
 
         # Sync publishers
-        for jump_symbol, _price_account_map in ref_publishers["permissions"].items():
+        for jump_symbol, _price_account_map in ref_permissions.items():
             ref_product = ref_products[jump_symbol]
 
-            (
-                price_instructions,
-                price_keypairs,
-            ) = await self.sync_price_instructions(ref_product, ref_publishers)
+            (price_instructions, price_keypairs,) = await self.sync_price_instructions(
+                ref_product, ref_publishers, ref_permissions
+            )
 
             if price_instructions:
                 await self.send_transaction(
@@ -265,7 +272,7 @@ class ProgramAdmin:
 
     async def sync_product_instructions(
         self,
-        product: Product,
+        product: ReferenceProduct,
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         instructions: List[TransactionInstruction] = []
         funding_keypair = load_keypair("program", key_dir=self.key_dir)
@@ -368,45 +375,46 @@ class ProgramAdmin:
 
     async def sync_price_instructions(
         self,
-        product: Product,
-        publishers: Publishers,
+        reference_product: ReferenceProduct,
+        reference_publishers: ReferencePublishers,
+        reference_permissions: ReferencePermissions,
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         instructions: List[TransactionInstruction] = []
         funding_keypair = load_keypair("program", key_dir=self.key_dir)
         price_keypair = load_keypair(
-            f"price_{product['jump_symbol']}", key_dir=self.key_dir
+            f"price_{reference_product['jump_symbol']}", key_dir=self.key_dir
         )
         price_account = self.get_price_account(price_keypair.public_key)
         current_publishers = {
-            publishers["names"][component.publisher_key]
+            reference_publishers["names"][component.publisher_key]
             for component in price_account.data.price_components
         }
-        reference_publishers = set(
-            publishers["permissions"][product["jump_symbol"]]["price"]
+        new_publishers = set(
+            reference_permissions[reference_product["jump_symbol"]]["price"]
         )
-        new_publishers = reference_publishers - current_publishers
-        old_publishers = current_publishers - reference_publishers
+        publishers_to_add = new_publishers - current_publishers
+        publishers_to_remove = current_publishers - new_publishers
 
-        for jump_symbol in old_publishers:
+        for jump_symbol in publishers_to_remove:
             logger.debug("Building pyth_program.del_publisher instruction")
             instructions.append(
                 pyth_program.toggle_publisher(
                     self.program_key,
                     funding_keypair.public_key,
                     price_keypair.public_key,
-                    publishers["keys"][jump_symbol],
+                    reference_publishers["keys"][jump_symbol],
                     status=False,
                 )
             )
 
-        for jump_symbol in new_publishers:
+        for jump_symbol in publishers_to_add:
             logger.debug("Building pyth_program.add_publisher instruction")
             instructions.append(
                 pyth_program.toggle_publisher(
                     self.program_key,
                     funding_keypair.public_key,
                     price_keypair.public_key,
-                    publishers["keys"][jump_symbol],
+                    reference_publishers["keys"][jump_symbol],
                     status=True,
                 )
             )

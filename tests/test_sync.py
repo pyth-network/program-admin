@@ -3,6 +3,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import pytest
 import ujson as json
+from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin
 
@@ -68,13 +69,23 @@ def publishers_json():
         jsonfile.write(
             json.dumps(
                 {
-                    "publisher_keys": {
-                        "random": "23CGbZq2AAzZcHk1vVBs9Zq4AkNJhjxRbjMiCFTy8vJP",  # random key
-                    },
-                    "publisher_permissions": {
-                        "AAPL": {"price": ["random"]},
-                        "BTCUSD": {"price": ["random"]},
-                    },
+                    "random": "23CGbZq2AAzZcHk1vVBs9Zq4AkNJhjxRbjMiCFTy8vJP",  # random key
+                },
+            ).encode()
+        )
+        jsonfile.flush()
+
+        yield jsonfile.name
+
+
+@pytest.fixture
+def permissions_json():
+    with NamedTemporaryFile() as jsonfile:
+        jsonfile.write(
+            json.dumps(
+                {
+                    "AAPL": {"price": ["random"]},
+                    "BTCUSD": {"price": ["random"]},
                 },
             ).encode()
         )
@@ -101,7 +112,7 @@ async def pyth_keypair(key_dir):
 @pytest.fixture
 async def pyth_program(pyth_keypair):
     process = await asyncio.create_subprocess_shell(
-        f" && solana airdrop 100 -k {pyth_keypair} --commitment=finalized",
+        f"solana airdrop 100 -k {pyth_keypair} --commitment=finalized",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -136,7 +147,9 @@ async def pyth_program(pyth_keypair):
 
 
 # pylint: disable=protected-access,redefined-outer-name
-async def test_sync(key_dir, pyth_program, products_json, publishers_json):
+async def test_sync(
+    key_dir, pyth_program, products_json, publishers_json, permissions_json
+):
     program_admin = ProgramAdmin(
         network="localhost",
         key_dir=key_dir,
@@ -146,6 +159,7 @@ async def test_sync(key_dir, pyth_program, products_json, publishers_json):
     await program_admin.sync(
         products_path=products_json,
         publishers_path=publishers_json,
+        permissions_path=permissions_json,
     )
 
     await program_admin.refresh_program_accounts(commitment="confirmed")
@@ -154,3 +168,13 @@ async def test_sync(key_dir, pyth_program, products_json, publishers_json):
 
     assert product_accounts[0].data.metadata["symbol"] == "Crypto.BTC/USD"
     assert product_accounts[1].data.metadata["symbol"] == "Equity.US.AAPL/USD"
+
+    price_accounts = list(program_admin._price_accounts.values())
+
+    assert price_accounts[0].data.price_components[0].publisher_key == PublicKey(
+        publishers_json["random"]
+    )
+
+    assert price_accounts[1].data.price_components[0].publisher_key == PublicKey(
+        publishers_json["random"]
+    )

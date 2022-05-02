@@ -5,8 +5,8 @@ from solana.publickey import PublicKey
 
 Network = Literal["devnet", "localhost", "mainnet-beta", "testnet"]
 
-Product = TypedDict(
-    "Product",
+ReferenceProduct = TypedDict(
+    "ReferenceProduct",
     {
         "jump_symbol": str,
         "exponent": int,
@@ -14,14 +14,15 @@ Product = TypedDict(
     },
 )
 
-Publishers = TypedDict(
-    "Publishers",
+ReferencePublishers = TypedDict(
+    "ReferencePublishers",
     {
         "keys": Dict[str, PublicKey],
         "names": Dict[PublicKey, str],
-        "permissions": Dict[str, Dict[str, List[str]]],
     },
 )
+
+ReferencePermissions = Dict[str, Dict[str, List[str]]]
 
 
 @dataclass
