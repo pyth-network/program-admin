@@ -52,4 +52,7 @@ def load_keypair(
 def restore_symlink(key: PublicKey, label: str, key_dir: Union[str, Path]):
     link_path = Path(key_dir) / f"{label}.json"
 
-    link_path.symlink_to(f"account_{key}.json")
+    try:
+        link_path.symlink_to(f"account_{key}.json")
+    except FileExistsError:
+        pass
