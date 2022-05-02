@@ -32,7 +32,7 @@ ENV PATH="$POETRY_HOME/bin:$PATH"
 
 WORKDIR $APP_PATH
 COPY ./poetry.lock ./pyproject.toml ./
-COPY ./$APP_PACKAGE* ./
+COPY ./$APP_PACKAGE ./
 
 #
 # Stage: development
@@ -56,6 +56,8 @@ CMD ["$APP_NAME"]
 #
 
 FROM base as build
+
+ARG APP_NAME
 ARG APP_PATH
 
 WORKDIR $APP_PATH
@@ -85,7 +87,7 @@ ENV \
 WORKDIR $APP_PATH
 COPY --from=build $APP_PATH/dist/*.whl ./
 COPY --from=build $APP_PATH/constraints.txt ./
-RUN pip install ./$APP_NAME*.whl --constraint constraints.txt
+RUN pip install ./*.whl --constraint constraints.txt
 
 ENV APP_NAME=$APP_NAME
 
