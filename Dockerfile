@@ -89,7 +89,11 @@ COPY --from=build $APP_PATH/dist/*.whl ./
 COPY --from=build $APP_PATH/constraints.txt ./
 RUN pip install ./*.whl --constraint constraints.txt
 
+# Install Solana CLI
+RUN sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
+
 ENV APP_NAME=$APP_NAME
+ENV PATH=$PATH:/root/.local/share/solana/install/active_release/bin
 
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
