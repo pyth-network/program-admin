@@ -64,9 +64,12 @@ def list_accounts(network, program_key, keys, publishers, commitment):
                 )
 
                 for component in price_account.data.price_components:
-                    print(
-                        f"      Publisher: {publishers_map['names'][component.publisher_key]}"
-                    )
+                    try:
+                        name = publishers_map["names"][component.publisher_key]
+                    except KeyError:
+                        name = f"??? ({component.publisher_key})"
+
+                    print(f"      Publisher: {name}")
 
         mapping_key = mapping_account.data.next_mapping_account_key
 
