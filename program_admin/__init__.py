@@ -179,7 +179,10 @@ class ProgramAdmin:
         products_path: str,
         publishers_path: str,
         permissions_path: str,
-    ):
+        send_transactions: bool = True,
+    ) -> List[TransactionInstruction]:
+        instructions: List[TransactionInstruction] = []
+
         # Fetch program accounts from the network
         await self.refresh_program_accounts()
 
@@ -187,7 +190,10 @@ class ProgramAdmin:
         mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions()
 
         if mapping_instructions:
-            await self.send_transaction(mapping_instructions, mapping_keypairs)
+            instructions.extend(mapping_instructions)
+            if send_transactions:
+                await self.send_transaction(mapping_instructions, mapping_keypairs)
+
             await self.refresh_program_accounts()
 
         # FIXME: We should check if the mapping account has enough space to
@@ -210,7 +216,10 @@ class ProgramAdmin:
 
             if product_instructions:
                 product_updates = True
-                await self.send_transaction(product_instructions, product_keypairs)
+
+                instructions.extend(product_instructions)
+                if send_transactions:
+                    await self.send_transaction(product_instructions, product_keypairs)
 
         if product_updates:
             await self.refresh_program_accounts()
@@ -224,7 +233,11 @@ class ProgramAdmin:
             )
 
             if price_instructions:
-                await self.send_transaction(price_instructions, price_keypairs)
+                instructions.extend(price_instructions)
+                if send_transactions:
+                    await self.send_transaction(price_instructions, price_keypairs)
+
+        return instructions
 
     async def sync_mapping_instructions(
         self,
@@ -390,26 +403,28 @@ class ProgramAdmin:
         publishers_to_add = new_publishers - current_publishers
         publishers_to_remove = current_publishers - new_publishers
 
-        for jump_symbol in publishers_to_remove:
+        for publisher_name in publishers_to_remove:
+            logger.info(f"Deleting publisher: {publisher_name}")
             logger.debug("Building pyth_program.del_publisher instruction")
             instructions.append(
                 pyth_program.toggle_publisher(
                     self.program_key,
                     funding_keypair.public_key,
                     price_keypair.public_key,
-                    reference_publishers["keys"][jump_symbol],
+                    reference_publishers["keys"][publisher_name],
                     status=False,
                 )
             )
 
-        for jump_symbol in publishers_to_add:
+        for publisher_name in publishers_to_add:
+            logger.info(f"Adding publisher: {publisher_name}")
             logger.debug("Building pyth_program.add_publisher instruction")
             instructions.append(
                 pyth_program.toggle_publisher(
                     self.program_key,
                     funding_keypair.public_key,
                     price_keypair.public_key,
-                    reference_publishers["keys"][jump_symbol],
+                    reference_publishers["keys"][publisher_name],
                     status=True,
                 )
             )

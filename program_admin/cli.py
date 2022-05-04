@@ -146,7 +146,21 @@ def restore_links(network, program_key, products, commitment):
     envvar="COMMITMENT",
     default="finalized",
 )
-def sync(network, program_key, products, publishers, permissions, commitment):
+@click.option(
+    "--send-transactions",
+    help="Whether to send transactions or just print instructions (set to 'true' or 'false')",
+    envvar="SEND_TRANSACTIONS",
+    default="true",
+)
+def sync(
+    network,
+    program_key,
+    products,
+    publishers,
+    permissions,
+    commitment,
+    send_transactions,
+):
     program_admin = ProgramAdmin(
         network=network,
         key_dir="./keys",
@@ -159,6 +173,7 @@ def sync(network, program_key, products, publishers, permissions, commitment):
             products_path=products,
             publishers_path=publishers,
             permissions_path=permissions,
+            send_transactions=(send_transactions == "true"),
         )
     )
 
