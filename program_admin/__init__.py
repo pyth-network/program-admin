@@ -90,7 +90,7 @@ class ProgramAdmin:
 
     async def refresh_program_accounts(self):
         async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
-            logger.debug("Refreshing program accounts")
+            logger.info("Refreshing program accounts")
             result = (
                 await client.get_program_accounts(
                     pubkey=self.program_key,
@@ -209,6 +209,7 @@ class ProgramAdmin:
         for jump_symbol, _price_account_map in ref_permissions.items():
             ref_product = ref_products[jump_symbol]
 
+            logger.debug(f"Syncing product: {jump_symbol}")
             (
                 product_instructions,
                 product_keypairs,
@@ -228,6 +229,7 @@ class ProgramAdmin:
         for jump_symbol, _price_account_map in ref_permissions.items():
             ref_product = ref_products[jump_symbol]
 
+            logger.debug(f"Syncing price: {jump_symbol}")
             (price_instructions, price_keypairs,) = await self.sync_price_instructions(
                 ref_product, ref_publishers, ref_permissions
             )
