@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Dict
 
 import click
+from loguru import logger
 from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin
@@ -188,3 +189,7 @@ def sync(
 cli.add_command(list_accounts)
 cli.add_command(restore_links)
 cli.add_command(sync)
+
+
+logger.remove()
+logger.add(sys.stdout, serialize=True)
