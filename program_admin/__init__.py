@@ -245,8 +245,7 @@ class ProgramAdmin:
         self,
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
-        program_keypair = load_keypair("program", key_dir=self.key_dir)
-        funding_keypair = program_keypair
+        funding_keypair = load_keypair("funding", key_dir=self.key_dir)
         mapping_0_keypair = load_keypair(
             "mapping_0", key_dir=self.key_dir, generate=True
         )
@@ -285,7 +284,7 @@ class ProgramAdmin:
         product: ReferenceProduct,
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         instructions: List[TransactionInstruction] = []
-        funding_keypair = load_keypair("program", key_dir=self.key_dir)
+        funding_keypair = load_keypair("funding", key_dir=self.key_dir)
         mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
         mapping_keypair = load_keypair(mapping_chain[-1], key_dir=self.key_dir)
         product_keypair = load_keypair(
@@ -390,7 +389,7 @@ class ProgramAdmin:
         reference_permissions: ReferencePermissions,
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         instructions: List[TransactionInstruction] = []
-        funding_keypair = load_keypair("program", key_dir=self.key_dir)
+        funding_keypair = load_keypair("funding", key_dir=self.key_dir)
         price_keypair = load_keypair(
             f"price_{reference_product['jump_symbol']}", key_dir=self.key_dir
         )

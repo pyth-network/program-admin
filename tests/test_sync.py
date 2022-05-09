@@ -114,14 +114,14 @@ async def validator():
 @pytest.fixture
 async def pyth_keypair(key_dir, validator):
     process = await asyncio.create_subprocess_shell(
-        f"solana-keygen new -o {key_dir}/program.json",
+        f"solana-keygen new -o {key_dir}/funding.json",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
 
     await process.wait()
 
-    yield f"{key_dir}/program.json"
+    yield f"{key_dir}/funding.json"
 
 
 # pylint: disable=redefined-outer-name,unused-argument
