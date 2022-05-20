@@ -1,5 +1,4 @@
 name: CI
-
 on:
   push:
     branches:
@@ -9,38 +8,37 @@ on:
   pull_request:
     branches:
       - "main"
-
 jobs:
   check-imports:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/python-poetry
       - run: poetry run isort --profile=black --check .
 
   check-formatting:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/python-poetry
       - run: poetry run black --check .
 
   check-linter:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/python-poetry
       - run: poetry run pylint program_admin tests
 
   check-types:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/python-poetry
       - run: poetry run mypy program_admin tests
 
   run-tests:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [check-imports, check-formatting, check-linter, check-types]
     steps:
       - uses: actions/checkout@v2
@@ -50,7 +48,7 @@ jobs:
       - run: poetry run pytest
 
   build-and-push-image:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [run-tests]
     permissions:
       id-token: write
