@@ -9,33 +9,14 @@ on:
     branches:
       - "main"
 jobs:
-  check-imports:
+  pre-commit:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/python-poetry
-      - run: poetry run isort --profile=black --check .
-  check-formatting:
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v2
-      - uses: ./.github/actions/python-poetry
-      - run: poetry run black --check .
-  check-linter:
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v2
-      - uses: ./.github/actions/python-poetry
-      - run: poetry run pylint program_admin tests
-  check-types:
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v2
-      - uses: ./.github/actions/python-poetry
-      - run: poetry run mypy program_admin tests
+      - uses: pre-commit/action@v2.0.3
   run-tests:
     runs-on: self-hosted
-    needs: [check-imports, check-formatting, check-linter, check-types]
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/python-poetry
