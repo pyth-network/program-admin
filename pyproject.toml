@@ -18,7 +18,7 @@ loguru = "^0.6.0"
 pythclient = "^0.1.0"
 python = "^3.10"
 solana = "^0.23.0"
-ujson = "^5.2.0"
+ujson = "^5.4.0"
 
 [tool.poetry.dev-dependencies]
 black = { version = "^22.3.0" }
