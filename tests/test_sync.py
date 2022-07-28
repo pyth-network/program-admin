@@ -7,6 +7,57 @@ from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin
 
+BTC_USD = {
+    "account": "",
+    "attr_dict": {
+        "symbol": "Crypto.BTC/USD",
+        "asset_type": "Crypto",
+        "base": "BTC",
+        "quote_currency": "USD",
+        "generic_symbol": "BTCUSD",
+        "description": "BTC/USD",
+    },
+    "metadata": {
+        "jump_id": "78876709",
+        "jump_symbol": "BTCUSD",
+        "price_exp": -8,
+    },
+}
+AAPL_USD = {
+    "account": "",
+    "attr_dict": {
+    "asset_type": "Equity",
+    "country": "US",
+    "description": "APPLE INC",
+    "quote_currency": "USD",
+    "cms_symbol": "AAPL",
+    "cqs_symbol": "AAPL",
+    "nasdaq_symbol": "AAPL",
+    "symbol": "Equity.US.AAPL/USD",
+    "base": "AAPL",
+    },
+    "metadata": {
+    "jump_id": "186",
+    "jump_symbol": "AAPL",
+    "price_exp": -5,
+    },
+}
+ETH_USD = {
+    "account": "",
+    "attr_dict": {
+        "symbol": "Crypto.ETH/USD",
+        "asset_type": "Crypto",
+        "base": "ETH",
+        "quote_currency": "USD",
+        "generic_symbol": "ETHUSD",
+        "description": "ETH/USD",
+    },
+    "metadata": {
+        "jump_id": "12345",
+        "jump_symbol": "ETHUSD",
+        "price_exp": -8,
+    },
+}
 
 @pytest.fixture
 def key_dir():
@@ -18,45 +69,7 @@ def key_dir():
 def products_json():
     with NamedTemporaryFile(delete=False) as jsonfile:
         jsonfile.write(
-            json.dumps(
-                [
-                    {
-                        "account": "",
-                        "attr_dict": {
-                            "symbol": "Crypto.BTC/USD",
-                            "asset_type": "Crypto",
-                            "base": "BTC",
-                            "quote_currency": "USD",
-                            "generic_symbol": "BTCUSD",
-                            "description": "BTC/USD",
-                        },
-                        "metadata": {
-                            "jump_id": "78876709",
-                            "jump_symbol": "BTCUSD",
-                            "price_exp": -8,
-                        },
-                    },
-                    {
-                        "account": "",
-                        "attr_dict": {
-                            "asset_type": "Equity",
-                            "country": "US",
-                            "description": "APPLE INC",
-                            "quote_currency": "USD",
-                            "cms_symbol": "AAPL",
-                            "cqs_symbol": "AAPL",
-                            "nasdaq_symbol": "AAPL",
-                            "symbol": "Equity.US.AAPL/USD",
-                            "base": "AAPL",
-                        },
-                        "metadata": {
-                            "jump_id": "186",
-                            "jump_symbol": "AAPL",
-                            "price_exp": -5,
-                        },
-                    },
-                ]
-            ).encode()
+            json.dumps([BTC_USD, AAPL_USD]).encode()
         )
         jsonfile.flush()
 
@@ -67,61 +80,7 @@ def products_json():
 def products2_json():
     with NamedTemporaryFile(delete=False) as jsonfile:
         jsonfile.write(
-            json.dumps(
-                [
-                    {
-                        "account": "",
-                        "attr_dict": {
-                            "symbol": "Crypto.BTC/USD",
-                            "asset_type": "Crypto",
-                            "base": "BTC",
-                            "quote_currency": "USD",
-                            "generic_symbol": "BTCUSD",
-                            "description": "BTC/USD",
-                        },
-                        "metadata": {
-                            "jump_id": "78876709",
-                            "jump_symbol": "BTCUSD",
-                            "price_exp": -8,
-                        },
-                    },
-                    {
-                        "account": "",
-                        "attr_dict": {
-                            "asset_type": "Equity",
-                            "country": "US",
-                            "description": "APPLE INC",
-                            "quote_currency": "USD",
-                            "cms_symbol": "AAPL",
-                            "cqs_symbol": "AAPL",
-                            "nasdaq_symbol": "AAPL",
-                            "symbol": "Equity.US.AAPL/USD",
-                            "base": "AAPL",
-                        },
-                        "metadata": {
-                            "jump_id": "186",
-                            "jump_symbol": "AAPL",
-                            "price_exp": -5,
-                        },
-                    },
-                    {
-                        "account": "",
-                        "attr_dict": {
-                            "symbol": "Crypto.ETH/USD",
-                            "asset_type": "Crypto",
-                            "base": "ETH",
-                            "quote_currency": "USD",
-                            "generic_symbol": "ETHUSD",
-                            "description": "ETH/USD",
-                        },
-                        "metadata": {
-                            "jump_id": "12345",
-                            "jump_symbol": "ETHUSD",
-                            "price_exp": -8,
-                        },
-                    },
-                ]
-            ).encode()
+            json.dumps([BTC_USD, AAPL_USD, ETH_USD]).encode()
         )
         jsonfile.flush()
 
