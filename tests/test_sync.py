@@ -157,6 +157,22 @@ def permissions_json():
 
         yield jsonfile.name
 
+@pytest.fixture
+def permissions2_json():
+    with NamedTemporaryFile() as jsonfile:
+        jsonfile.write(
+            json.dumps(
+                {
+                    "AAPL": {"price": ["random"]},
+                    "BTCUSD": {"price": ["random"]},
+                    "ETHUSD": {"price": ["random"]},
+                },
+            ).encode()
+        )
+        jsonfile.flush()
+
+        yield jsonfile.name
+
 
 @pytest.fixture
 async def validator():
@@ -228,7 +244,7 @@ async def pyth_program(pyth_keypair):
 
 # pylint: disable=protected-access,redefined-outer-name
 async def test_sync(
-    key_dir, pyth_program, products_json, products2_json, publishers_json, permissions_json
+    key_dir, pyth_program, products_json, products2_json, publishers_json, permissions_json, permissions2_json,
 ):
     program_admin = ProgramAdmin(
         network="localhost",
@@ -273,7 +289,7 @@ async def test_sync(
         await program_admin.sync(
             products_path=products2_json,
             publishers_path=publishers_json,
-            permissions_path=permissions_json,
+            permissions_path=permissions2_json,
             generate_keys=False
         )
     except RuntimeError:
