@@ -405,38 +405,42 @@ class ProgramAdmin:
             f"price_{reference_product['jump_symbol']}", key_dir=self.key_dir
         )
         price_account = self.get_price_account(price_keypair.public_key)
-        current_publishers = {
-            reference_publishers["names"][component.publisher_key]
-            for component in price_account.data.price_components
+        current_publisher_keys = {
+            comp.publisher_key for comp in price_account.data.price_components
         }
-        new_publishers = set(
+        new_publisher_names = set(
             reference_permissions[reference_product["jump_symbol"]]["price"]
         )
-        publishers_to_add = new_publishers - current_publishers
-        publishers_to_remove = current_publishers - new_publishers
+        new_publisher_keys = {
+            reference_publishers["keys"][name] for name in new_publisher_names
+        }
+        publishers_to_add = new_publisher_keys - current_publisher_keys
+        publishers_to_remove = current_publisher_keys - new_publisher_keys
 
-        for publisher_name in publishers_to_remove:
-            logger.info(f"Deleting publisher: {publisher_name}")
+        for publisher_key in publishers_to_remove:
+            logger.info(f"Deleting publisher key: {publisher_key}")
             logger.debug("Building pyth_program.del_publisher instruction")
             instructions.append(
                 pyth_program.toggle_publisher(
                     self.program_key,
                     funding_keypair.public_key,
                     price_keypair.public_key,
-                    reference_publishers["keys"][publisher_name],
+                    publisher_key,
                     status=False,
                 )
             )
 
-        for publisher_name in publishers_to_add:
-            logger.info(f"Adding publisher: {publisher_name}")
+        for publisher_key in publishers_to_add:
+            logger.info(
+                f"Adding publisher key: {publisher_key} ({reference_publishers['names'][publisher_key]})"
+            )
             logger.debug("Building pyth_program.add_publisher instruction")
             instructions.append(
                 pyth_program.toggle_publisher(
                     self.program_key,
                     funding_keypair.public_key,
                     price_keypair.public_key,
-                    reference_publishers["keys"][publisher_name],
+                    publisher_key,
                     status=True,
                 )
             )
