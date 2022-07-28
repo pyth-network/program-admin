@@ -44,7 +44,9 @@ def load_keypair(
             if generate:
                 return generate_keypair(label_or_pubkey, key_dir)
             else:
-                raise RuntimeError(f"Missing keypair (and key generation is not enabled): {file_path}")
+                raise RuntimeError(
+                    f"Missing keypair (and key generation is not enabled): {file_path}"
+                )
 
         with open(file_path, encoding="utf8") as file:
             data = bytes(json.load(file))

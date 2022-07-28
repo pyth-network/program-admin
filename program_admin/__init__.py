@@ -188,7 +188,9 @@ class ProgramAdmin:
         await self.refresh_program_accounts()
 
         # Sync mapping accounts
-        mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions(generate_keys)
+        mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions(
+            generate_keys
+        )
 
         if mapping_instructions:
             instructions.extend(mapping_instructions)
@@ -232,7 +234,9 @@ class ProgramAdmin:
 
             logger.debug(f"Syncing price: {jump_symbol}")
             (price_instructions, price_keypairs,) = await self.sync_price_instructions(
-                ref_product, ref_publishers, ref_permissions,
+                ref_product,
+                ref_publishers,
+                ref_permissions,
             )
 
             if price_instructions:
@@ -291,11 +295,15 @@ class ProgramAdmin:
         mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
         mapping_keypair = load_keypair(mapping_chain[-1], key_dir=self.key_dir)
         product_keypair = load_keypair(
-            f"product_{product['jump_symbol']}", key_dir=self.key_dir, generate=generate_keys
+            f"product_{product['jump_symbol']}",
+            key_dir=self.key_dir,
+            generate=generate_keys,
         )
         product_account = self._product_accounts.get(product_keypair.public_key)
         price_keypair = load_keypair(
-            f"price_{product['jump_symbol']}", key_dir=self.key_dir, generate=generate_keys
+            f"price_{product['jump_symbol']}",
+            key_dir=self.key_dir,
+            generate=generate_keys,
         )
         price_account = self._price_accounts.get(price_keypair.public_key)
 

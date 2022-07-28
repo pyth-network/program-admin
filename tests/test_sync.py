@@ -26,20 +26,20 @@ BTC_USD = {
 AAPL_USD = {
     "account": "",
     "attr_dict": {
-    "asset_type": "Equity",
-    "country": "US",
-    "description": "APPLE INC",
-    "quote_currency": "USD",
-    "cms_symbol": "AAPL",
-    "cqs_symbol": "AAPL",
-    "nasdaq_symbol": "AAPL",
-    "symbol": "Equity.US.AAPL/USD",
-    "base": "AAPL",
+        "asset_type": "Equity",
+        "country": "US",
+        "description": "APPLE INC",
+        "quote_currency": "USD",
+        "cms_symbol": "AAPL",
+        "cqs_symbol": "AAPL",
+        "nasdaq_symbol": "AAPL",
+        "symbol": "Equity.US.AAPL/USD",
+        "base": "AAPL",
     },
     "metadata": {
-    "jump_id": "186",
-    "jump_symbol": "AAPL",
-    "price_exp": -5,
+        "jump_id": "186",
+        "jump_symbol": "AAPL",
+        "price_exp": -5,
     },
 }
 ETH_USD = {
@@ -59,6 +59,7 @@ ETH_USD = {
     },
 }
 
+
 @pytest.fixture
 def key_dir():
     with TemporaryDirectory() as directory:
@@ -68,9 +69,7 @@ def key_dir():
 @pytest.fixture
 def products_json():
     with NamedTemporaryFile(delete=False) as jsonfile:
-        jsonfile.write(
-            json.dumps([BTC_USD, AAPL_USD]).encode()
-        )
+        jsonfile.write(json.dumps([BTC_USD, AAPL_USD]).encode())
         jsonfile.flush()
 
         yield jsonfile.name
@@ -79,12 +78,11 @@ def products_json():
 @pytest.fixture
 def products2_json():
     with NamedTemporaryFile(delete=False) as jsonfile:
-        jsonfile.write(
-            json.dumps([BTC_USD, AAPL_USD, ETH_USD]).encode()
-        )
+        jsonfile.write(json.dumps([BTC_USD, AAPL_USD, ETH_USD]).encode())
         jsonfile.flush()
 
         yield jsonfile.name
+
 
 @pytest.fixture
 def publishers_json():
@@ -115,6 +113,7 @@ def permissions_json():
         jsonfile.flush()
 
         yield jsonfile.name
+
 
 @pytest.fixture
 def permissions2_json():
@@ -203,7 +202,13 @@ async def pyth_program(pyth_keypair):
 
 # pylint: disable=protected-access,redefined-outer-name
 async def test_sync(
-    key_dir, pyth_program, products_json, products2_json, publishers_json, permissions_json, permissions2_json,
+    key_dir,
+    pyth_program,
+    products_json,
+    products2_json,
+    publishers_json,
+    permissions_json,
+    permissions2_json,
 ):
     program_admin = ProgramAdmin(
         network="localhost",
@@ -239,7 +244,7 @@ async def test_sync(
         products_path=products_json,
         publishers_path=publishers_json,
         permissions_path=permissions_json,
-        generate_keys=False
+        generate_keys=False,
     )
 
     # Syncing a different product list should fail
@@ -249,11 +254,9 @@ async def test_sync(
             products_path=products2_json,
             publishers_path=publishers_json,
             permissions_path=permissions2_json,
-            generate_keys=False
+            generate_keys=False,
         )
     except RuntimeError:
         threw_error = True
 
     assert threw_error
-
-
