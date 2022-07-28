@@ -180,6 +180,7 @@ class ProgramAdmin:
         publishers_path: str,
         permissions_path: str,
         send_transactions: bool = True,
+        generate_keys: bool = False,
     ) -> List[TransactionInstruction]:
         instructions: List[TransactionInstruction] = []
 
@@ -187,7 +188,7 @@ class ProgramAdmin:
         await self.refresh_program_accounts()
 
         # Sync mapping accounts
-        mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions()
+        mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions(generate_keys)
 
         if mapping_instructions:
             instructions.extend(mapping_instructions)
@@ -213,7 +214,7 @@ class ProgramAdmin:
             (
                 product_instructions,
                 product_keypairs,
-            ) = await self.sync_product_instructions(ref_product)
+            ) = await self.sync_product_instructions(ref_product, generate_keys)
 
             if product_instructions:
                 product_updates = True
@@ -231,7 +232,7 @@ class ProgramAdmin:
 
             logger.debug(f"Syncing price: {jump_symbol}")
             (price_instructions, price_keypairs,) = await self.sync_price_instructions(
-                ref_product, ref_publishers, ref_permissions
+                ref_product, ref_publishers, ref_permissions,
             )
 
             if price_instructions:
@@ -243,11 +244,12 @@ class ProgramAdmin:
 
     async def sync_mapping_instructions(
         self,
+        generate_keys: bool,
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
         funding_keypair = load_keypair("funding", key_dir=self.key_dir)
         mapping_0_keypair = load_keypair(
-            "mapping_0", key_dir=self.key_dir, generate=True
+            "mapping_0", key_dir=self.key_dir, generate=generate_keys
         )
         instructions: List[TransactionInstruction] = []
 
@@ -282,17 +284,18 @@ class ProgramAdmin:
     async def sync_product_instructions(
         self,
         product: ReferenceProduct,
+        generate_keys: bool,
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         instructions: List[TransactionInstruction] = []
         funding_keypair = load_keypair("funding", key_dir=self.key_dir)
         mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
         mapping_keypair = load_keypair(mapping_chain[-1], key_dir=self.key_dir)
         product_keypair = load_keypair(
-            f"product_{product['jump_symbol']}", key_dir=self.key_dir, generate=True
+            f"product_{product['jump_symbol']}", key_dir=self.key_dir, generate=generate_keys
         )
         product_account = self._product_accounts.get(product_keypair.public_key)
         price_keypair = load_keypair(
-            f"price_{product['jump_symbol']}", key_dir=self.key_dir, generate=True
+            f"price_{product['jump_symbol']}", key_dir=self.key_dir, generate=generate_keys
         )
         price_account = self._price_accounts.get(price_keypair.public_key)
 

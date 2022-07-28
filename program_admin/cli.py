@@ -159,6 +159,12 @@ def restore_links(network, program_key, keys, products, commitment):
     envvar="SEND_TRANSACTIONS",
     default="true",
 )
+@click.option(
+    "--generate-keys",
+    help="If set to 'true', allow this command to generate new keypairs for new mapping/product/price accounts.",
+    envvar="GENERATE_KEYS",
+    default="false",
+)
 def sync(
     network,
     program_key,
@@ -168,6 +174,7 @@ def sync(
     permissions,
     commitment,
     send_transactions,
+    generate_keys,
 ):
     program_admin = ProgramAdmin(
         network=network,
@@ -182,6 +189,7 @@ def sync(
             publishers_path=publishers,
             permissions_path=permissions,
             send_transactions=(send_transactions == "true"),
+            generate_keys=(generate_keys == "true"),
         )
     )
 
