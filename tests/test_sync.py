@@ -88,6 +88,25 @@ def products2_json():
                     {
                         "account": "",
                         "attr_dict": {
+                            "asset_type": "Equity",
+                            "country": "US",
+                            "description": "APPLE INC",
+                            "quote_currency": "USD",
+                            "cms_symbol": "AAPL",
+                            "cqs_symbol": "AAPL",
+                            "nasdaq_symbol": "AAPL",
+                            "symbol": "Equity.US.AAPL/USD",
+                            "base": "AAPL",
+                        },
+                        "metadata": {
+                            "jump_id": "186",
+                            "jump_symbol": "AAPL",
+                            "price_exp": -5,
+                        },
+                    },
+                    {
+                        "account": "",
+                        "attr_dict": {
                             "symbol": "Crypto.ETH/USD",
                             "asset_type": "Crypto",
                             "base": "ETH",
