@@ -7,6 +7,58 @@ from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin
 
+BTC_USD = {
+    "account": "",
+    "attr_dict": {
+        "symbol": "Crypto.BTC/USD",
+        "asset_type": "Crypto",
+        "base": "BTC",
+        "quote_currency": "USD",
+        "generic_symbol": "BTCUSD",
+        "description": "BTC/USD",
+    },
+    "metadata": {
+        "jump_id": "78876709",
+        "jump_symbol": "BTCUSD",
+        "price_exp": -8,
+    },
+}
+AAPL_USD = {
+    "account": "",
+    "attr_dict": {
+        "asset_type": "Equity",
+        "country": "US",
+        "description": "APPLE INC",
+        "quote_currency": "USD",
+        "cms_symbol": "AAPL",
+        "cqs_symbol": "AAPL",
+        "nasdaq_symbol": "AAPL",
+        "symbol": "Equity.US.AAPL/USD",
+        "base": "AAPL",
+    },
+    "metadata": {
+        "jump_id": "186",
+        "jump_symbol": "AAPL",
+        "price_exp": -5,
+    },
+}
+ETH_USD = {
+    "account": "",
+    "attr_dict": {
+        "symbol": "Crypto.ETH/USD",
+        "asset_type": "Crypto",
+        "base": "ETH",
+        "quote_currency": "USD",
+        "generic_symbol": "ETHUSD",
+        "description": "ETH/USD",
+    },
+    "metadata": {
+        "jump_id": "12345",
+        "jump_symbol": "ETHUSD",
+        "price_exp": -8,
+    },
+}
+
 
 @pytest.fixture
 def key_dir():
@@ -17,47 +69,16 @@ def key_dir():
 @pytest.fixture
 def products_json():
     with NamedTemporaryFile(delete=False) as jsonfile:
-        jsonfile.write(
-            json.dumps(
-                [
-                    {
-                        "account": "",
-                        "attr_dict": {
-                            "symbol": "Crypto.BTC/USD",
-                            "asset_type": "Crypto",
-                            "base": "BTC",
-                            "quote_currency": "USD",
-                            "generic_symbol": "BTCUSD",
-                            "description": "BTC/USD",
-                        },
-                        "metadata": {
-                            "jump_id": "78876709",
-                            "jump_symbol": "BTCUSD",
-                            "price_exp": -8,
-                        },
-                    },
-                    {
-                        "account": "",
-                        "attr_dict": {
-                            "asset_type": "Equity",
-                            "country": "US",
-                            "description": "APPLE INC",
-                            "quote_currency": "USD",
-                            "cms_symbol": "AAPL",
-                            "cqs_symbol": "AAPL",
-                            "nasdaq_symbol": "AAPL",
-                            "symbol": "Equity.US.AAPL/USD",
-                            "base": "AAPL",
-                        },
-                        "metadata": {
-                            "jump_id": "186",
-                            "jump_symbol": "AAPL",
-                            "price_exp": -5,
-                        },
-                    },
-                ]
-            ).encode()
-        )
+        jsonfile.write(json.dumps([BTC_USD, AAPL_USD]).encode())
+        jsonfile.flush()
+
+        yield jsonfile.name
+
+
+@pytest.fixture
+def products2_json():
+    with NamedTemporaryFile(delete=False) as jsonfile:
+        jsonfile.write(json.dumps([BTC_USD, AAPL_USD, ETH_USD]).encode())
         jsonfile.flush()
 
         yield jsonfile.name
@@ -86,6 +107,23 @@ def permissions_json():
                 {
                     "AAPL": {"price": ["random"]},
                     "BTCUSD": {"price": ["random"]},
+                },
+            ).encode()
+        )
+        jsonfile.flush()
+
+        yield jsonfile.name
+
+
+@pytest.fixture
+def permissions2_json():
+    with NamedTemporaryFile() as jsonfile:
+        jsonfile.write(
+            json.dumps(
+                {
+                    "AAPL": {"price": ["random"]},
+                    "BTCUSD": {"price": ["random"]},
+                    "ETHUSD": {"price": ["random"]},
                 },
             ).encode()
         )
@@ -164,7 +202,13 @@ async def pyth_program(pyth_keypair):
 
 # pylint: disable=protected-access,redefined-outer-name
 async def test_sync(
-    key_dir, pyth_program, products_json, publishers_json, permissions_json
+    key_dir,
+    pyth_program,
+    products_json,
+    products2_json,
+    publishers_json,
+    permissions_json,
+    permissions2_json,
 ):
     program_admin = ProgramAdmin(
         network="localhost",
@@ -177,6 +221,7 @@ async def test_sync(
         products_path=products_json,
         publishers_path=publishers_json,
         permissions_path=permissions_json,
+        generate_keys=True,
     )
 
     await program_admin.refresh_program_accounts()
@@ -193,3 +238,25 @@ async def test_sync(
 
     assert price_accounts[0].data.price_components[0].publisher_key == random_publisher
     assert price_accounts[1].data.price_components[0].publisher_key == random_publisher
+
+    # Syncing again with generate_keys=False should succeed
+    await program_admin.sync(
+        products_path=products_json,
+        publishers_path=publishers_json,
+        permissions_path=permissions_json,
+        generate_keys=False,
+    )
+
+    # Syncing a different product list should fail
+    threw_error = False
+    try:
+        await program_admin.sync(
+            products_path=products2_json,
+            publishers_path=publishers_json,
+            permissions_path=permissions2_json,
+            generate_keys=False,
+        )
+    except RuntimeError:
+        threw_error = True
+
+    assert threw_error

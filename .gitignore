@@ -6,3 +6,7 @@ permissions.json
 products.json
 publishers.json
 test-ledger
+
+# IntelliJ files
+.idea
+*.iml

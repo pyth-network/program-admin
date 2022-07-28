@@ -40,8 +40,13 @@ def load_keypair(
     else:
         file_path = Path(key_dir) / f"{label_or_pubkey}.json"
 
-        if generate and not file_path.exists():
-            return generate_keypair(label_or_pubkey, key_dir)
+        if not file_path.exists():
+            if generate:
+                return generate_keypair(label_or_pubkey, key_dir)
+
+            raise RuntimeError(
+                f"Missing keypair (and key generation is not enabled): {file_path}"
+            )
 
         with open(file_path, encoding="utf8") as file:
             data = bytes(json.load(file))

@@ -21,3 +21,27 @@ These files are maintained in the `reference-data` repository.
 Once you have all private keys in the keys directory (and named with the expected format), run the `restore-links` command. It will create symlinks in the keys directory that are used by the tool to match keypairs with account and reference data.
 
 This is only needed once when setting up a new keys directory.
+
+## Development
+
+This project uses `poetry` to manage python dependencies and virtual environments.
+To set up the project, first install poetry:
+
+* Mac `brew install poetry`
+* For other platforms, see installation instructions here: https://python-poetry.org/docs/
+
+Note: this project requires Python version >= 3.10.
+If you have a different version, try using [pyenv](https://realpython.com/intro-to-pyenv/) to install and manage your python versions. 
+
+Next, install project dependencies. From the project root directory, run:
+
+```
+poetry install
+```
+
+At this point, you can run commands in the project using `poetry run <command>` to run the command with the proper virtual environment.
+
+### Testing
+
+The unit tests require the [Solana command line tools](https://docs.solana.com/cli/install-solana-cli-tools) to be installed.
+Once these are installed, you can run the tests using `poetry run pytest`.
