@@ -21,3 +21,19 @@ These files are maintained in the `reference-data` repository.
 Once you have all private keys in the keys directory (and named with the expected format), run the `restore-links` command. It will create symlinks in the keys directory that are used by the tool to match keypairs with account and reference data.
 
 This is only needed once when setting up a new keys directory.
+
+## Development
+
+This project is managed using `poetry`. To set up the project, first install poetry:
+
+* Mac `brew install poetry`
+* For other platforms, see installation instructions here: https://python-poetry.org/docs/
+
+Next, install project dependencies. From the project root directory, run:
+
+```
+poetry install
+```
+
+At this point, you can run commands in the project using `poetry run <command>` to run the command with the proper virtual environment.
+For example, `poetry run pytest` runs the unit tests.
