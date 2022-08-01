@@ -46,6 +46,7 @@ RPC_ENDPOINTS: Dict[Network, str] = {
 
 class ProgramAdmin:
     network: Network
+    rpc_endpoint: str
     key_dir: Path
     program_key: PublicKey
     _mapping_accounts: Dict[PublicKey, PythMappingAccount]
@@ -58,8 +59,10 @@ class ProgramAdmin:
         key_dir: str,
         program_key: str,
         commitment: Literal["confirmed", "finalized"],
+        rpc_endpoint: str = None,
     ):
         self.network = network
+        self.rpc_endpoint = rpc_endpoint or RPC_ENDPOINTS[network]
         self.key_dir = Path(key_dir)
         self.program_key = PublicKey(program_key)
         self.commitment = Commitment(commitment)
@@ -85,11 +88,11 @@ class ProgramAdmin:
         """
         Return the minimum balance in lamports for a new account to be rent-exempt.
         """
-        async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
+        async with AsyncClient(self.rpc_endpoint) as client:
             return (await client.get_minimum_balance_for_rent_exemption(size))["result"]
 
     async def refresh_program_accounts(self):
-        async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
+        async with AsyncClient(self.rpc_endpoint) as client:
             logger.info("Refreshing program accounts")
             result = (
                 await client.get_program_accounts(
@@ -126,7 +129,7 @@ class ProgramAdmin:
         if not instructions:
             return
 
-        async with AsyncClient(RPC_ENDPOINTS[self.network]) as client:
+        async with AsyncClient(self.rpc_endpoint) as client:
             logger.debug(f"Sending {len(instructions)} instructions")
 
             blockhash = await recent_blockhash(client)
