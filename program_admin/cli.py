@@ -19,6 +19,7 @@ def cli():
 
 @click.command()
 @click.option("--network", help="Solana network", envvar="NETWORK")
+@click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
 @click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
 @click.option("--keys", help="Path to keys directory", envvar="KEYS")
 @click.option(
@@ -30,9 +31,10 @@ def cli():
     envvar="COMMITMENT",
     default="finalized",
 )
-def list_accounts(network, program_key, keys, publishers, commitment):
+def list_accounts(network, rpc_endpoint, program_key, keys, publishers, commitment):
     program_admin = ProgramAdmin(
         network=network,
+        rpc_endpoint=rpc_endpoint,
         key_dir=keys,
         program_key=program_key,
         commitment=commitment,
@@ -77,6 +79,7 @@ def list_accounts(network, program_key, keys, publishers, commitment):
 
 @click.command()
 @click.option("--network", help="Solana network", envvar="NETWORK")
+@click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
 @click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
 @click.option("--keys", help="Path to keys directory", envvar="KEYS")
 @click.option("--products", help="Path to reference products file", envvar="PRODUCTS")
@@ -86,9 +89,10 @@ def list_accounts(network, program_key, keys, publishers, commitment):
     envvar="COMMITMENT",
     default="finalized",
 )
-def restore_links(network, program_key, keys, products, commitment):
+def restore_links(network, rpc_endpoint, program_key, keys, products, commitment):
     program_admin = ProgramAdmin(
         network=network,
+        rpc_endpoint=rpc_endpoint,
         key_dir=keys,
         program_key=program_key,
         commitment=commitment,
@@ -138,6 +142,7 @@ def restore_links(network, program_key, keys, products, commitment):
 
 @click.command()
 @click.option("--network", help="Solana network", envvar="NETWORK")
+@click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
 @click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
 @click.option("--keys", help="Path to keys directory", envvar="KEYS")
 @click.option("--products", help="Path to reference products file", envvar="PRODUCTS")
@@ -167,6 +172,7 @@ def restore_links(network, program_key, keys, products, commitment):
 )
 def sync(
     network,
+    rpc_endpoint,
     program_key,
     keys,
     products,
@@ -178,6 +184,7 @@ def sync(
 ):
     program_admin = ProgramAdmin(
         network=network,
+        rpc_endpoint=rpc_endpoint,
         key_dir=keys,
         program_key=program_key,
         commitment=commitment,
