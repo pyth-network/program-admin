@@ -160,6 +160,13 @@ async def pyth_keypair(key_dir, validator):
     await process.wait()
 
     if process.returncode != 0:
+        stdout, stderr = await process.communicate()
+
+        if stdout:
+            print(f"[stdout]\n{stdout.decode()}")
+        if stderr:
+            print(f"[stderr]\n{stderr.decode()}")
+
         raise RuntimeError("Failed to generate funding key")
 
     yield f"{key_dir}/funding.json"
