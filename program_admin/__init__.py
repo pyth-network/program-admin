@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Dict, List, Literal, Tuple
 
@@ -102,6 +103,21 @@ class ProgramAdmin:
                 )
             )["result"]
 
+            reference_pairs = {
+                (
+                    "gSbePebfvPy7tRqimPoVecS2UsBvYv46ynrzWocc92s",
+                    "BmA9Z6FjioHJPpjT39QazZyhDRUdZy2ezwx4GiDdE2u2",
+                ),
+                (
+                    "8tfDNiaEyrV6Q1U4DEXrEigs9DoDtkugzFbybENEbCDz",
+                    "AFmdnt9ng1uVxqCmqwQJDAYC5cKTkw8gJKSM5PnzuF6z",
+                ),
+                (
+                    "FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH",
+                    "AHtgzX45WTKfkPG53L6WYhGEXwQkN1BVknET3sVsLL8J",
+                ),
+            }
+
             for record in result:
                 account = parse_account(record)
 
@@ -109,7 +125,11 @@ class ProgramAdmin:
                     continue
 
                 if isinstance(account, PythMappingAccount):
-                    self._mapping_accounts[account.public_key] = account
+                    actual_pair = (os.environ["PROGRAM_KEY"], str(account.public_key))
+                    test_mode = os.environ.get("TEST_MODE")
+
+                    if test_mode or actual_pair in reference_pairs:
+                        self._mapping_accounts[account.public_key] = account
 
                 if isinstance(account, PythProductAccount):
                     self._product_accounts[account.public_key] = account

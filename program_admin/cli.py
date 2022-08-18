@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 from pathlib import Path
 from typing import Dict
@@ -207,4 +208,4 @@ cli.add_command(sync)
 
 
 logger.remove()
-logger.add(sys.stdout, serialize=True)
+logger.add(sys.stdout, serialize=(not os.environ.get("DEV_MODE")))
