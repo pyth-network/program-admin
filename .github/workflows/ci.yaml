@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/python-poetry
-      - run: sh -c "$(curl -sSfL https://release.solana.com/v1.10.32/install)"
+      - run: sh -c "$(curl -sSfL https://release.solana.com/v1.9.29/install)"
       - run: echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
       - run: poetry run pytest
         env:
