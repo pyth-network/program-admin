@@ -1,4 +1,5 @@
 import asyncio
+import os
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import pytest
@@ -206,6 +207,10 @@ async def pyth_program(pyth_keypair):
         print(f"[stderr]\n{stderr.decode()}")
 
     _, _, program_id = stdout.decode("ascii").split()
+
+    # FIXME: This is so the mapping account kludge can work (we are bypassing
+    # the input args and using env. variables directly).
+    os.environ["PROGRAM_KEY"] = program_id
 
     yield program_id
 
