@@ -153,7 +153,7 @@ async def validator():
 @pytest.fixture
 async def pyth_keypair(key_dir, validator):
     process = await asyncio.create_subprocess_shell(
-        f"solana-keygen new -o {key_dir}/funding.json",
+        f"solana-keygen new --no-bip39-passphrase -o {key_dir}/funding.json",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -192,7 +192,7 @@ async def pyth_program(pyth_keypair):
         print(f"[stderr]\n{stderr.decode()}")
 
     process = await asyncio.create_subprocess_shell(
-        f"solana program deploy -k {pyth_keypair} -u localhost tests/oracle.so",
+        f"solana program deploy -k {pyth_keypair} -u localhost tests/pyth_oracle.so",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
