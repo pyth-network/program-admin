@@ -56,4 +56,4 @@ jobs:
       - uses: docker/build-push-action@v2
         with:
           push: true
-          tags: public.ecr.aws/k6w3s7k8/${{ github.event.repository.name }}:${{ steps.image_tag.outputs.value }}
+          tags: public.ecr.aws/pyth-network/${{ github.event.repository.name }}:${{ steps.image_tag.outputs.value }}
