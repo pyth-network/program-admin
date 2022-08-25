@@ -14,6 +14,8 @@ COMMAND_UPD_PRODUCT = 3
 COMMAND_ADD_PRICE = 4
 COMMAND_ADD_PUBLISHER = 5
 COMMAND_DEL_PUBLISHER = 6
+COMMAND_DEL_PRICE = 15
+COMMAND_DEL_PRODUCT = 16
 PRICE_TYPE_PRICE = 1
 PROGRAM_VERSION = 2
 
@@ -64,6 +66,31 @@ def add_product(
             AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=mapping_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=new_product_key, is_signer=True, is_writable=True),
+        ],
+        program_id=program_key,
+    )
+
+
+def delete_product(
+    program_key: PublicKey,
+    funding_key: PublicKey,
+    mapping_key: PublicKey,
+    product_key: PublicKey,
+) -> TransactionInstruction:
+    """
+    - funding account (signer, writable)
+    - mapping account (signer, writable)
+    - product account (signer, writable)
+    """
+    layout = Struct("version" / Int32ul, "command" / Int32sl)
+    data = layout.build(dict(version=PROGRAM_VERSION, command=COMMAND_DEL_PRODUCT))
+
+    return TransactionInstruction(
+        data=data,
+        keys=[
+            AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=mapping_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=product_key, is_signer=True, is_writable=True),
         ],
         program_id=program_key,
     )
@@ -130,6 +157,31 @@ def add_price(
             AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=product_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=new_price_key, is_signer=True, is_writable=True),
+        ],
+        program_id=program_key,
+    )
+
+
+def delete_price(
+    program_key: PublicKey,
+    funding_key: PublicKey,
+    product_key: PublicKey,
+    price_key: PublicKey,
+) -> TransactionInstruction:
+    """
+    - funding account (signer, writable)
+    - product account (signer, writable)
+    - price account (signer, writable)
+    """
+    layout = Struct("version" / Int32ul, "command" / Int32sl)
+    data = layout.build(dict(version=PROGRAM_VERSION, command=COMMAND_DEL_PRICE))
+
+    return TransactionInstruction(
+        data=data,
+        keys=[
+            AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=product_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=price_key, is_signer=True, is_writable=True),
         ],
         program_id=program_key,
     )
