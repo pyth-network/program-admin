@@ -8,14 +8,94 @@ import click
 from loguru import logger
 from solana.publickey import PublicKey
 
-from program_admin import ProgramAdmin
-from program_admin.keys import restore_symlink
+from program_admin import ProgramAdmin, instructions
+from program_admin.keys import load_keypair, restore_symlink
 from program_admin.parsing import parse_products_json, parse_publishers_json
 
 
 @click.group()
 def cli():
     pass
+
+
+@click.command()
+@click.option("--network", help="Solana network", envvar="NETWORK")
+@click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
+@click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
+@click.option("--keys", help="Path to keys directory", envvar="KEYS")
+@click.option(
+    "--commitment",
+    help="Confirmation level to use",
+    envvar="COMMITMENT",
+    default="finalized",
+)
+@click.option("--product", help="Public key of the product account")
+@click.option("--price", help="Public key of the price account")
+def delete_price(network, rpc_endpoint, program_key, keys, commitment, product, price):
+    program_admin = ProgramAdmin(
+        network=network,
+        rpc_endpoint=rpc_endpoint,
+        key_dir=keys,
+        program_key=program_key,
+        commitment=commitment,
+    )
+    funding_keypair = load_keypair("funding", key_dir=keys)
+    product_keypair = load_keypair(PublicKey(product), key_dir=keys)
+    price_keypair = load_keypair(PublicKey(price), key_dir=keys)
+    instruction = instructions.delete_price(
+        program_key,
+        funding_keypair.public_key,
+        product_keypair.public_key,
+        price_keypair.public_key,
+    )
+
+    asyncio.run(
+        program_admin.send_transaction(
+            [instruction],
+            [funding_keypair, product_keypair, price_keypair],
+        )
+    )
+
+
+@click.command()
+@click.option("--network", help="Solana network", envvar="NETWORK")
+@click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
+@click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
+@click.option("--keys", help="Path to keys directory", envvar="KEYS")
+@click.option(
+    "--commitment",
+    help="Confirmation level to use",
+    envvar="COMMITMENT",
+    default="finalized",
+)
+@click.option("--mapping", help="Public key of the mapping account")
+@click.option("--product", help="Public key of the product account")
+def delete_product(
+    network, rpc_endpoint, program_key, keys, commitment, mapping, product
+):
+    program_admin = ProgramAdmin(
+        network=network,
+        rpc_endpoint=rpc_endpoint,
+        key_dir=keys,
+        program_key=program_key,
+        commitment=commitment,
+    )
+    funding_keypair = load_keypair("funding", key_dir=keys)
+    mapping_keypair = load_keypair(PublicKey(mapping), key_dir=keys)
+    product_keypair = load_keypair(PublicKey(product), key_dir=keys)
+    instruction = instructions.delete_product(
+        program_key,
+        funding_keypair.public_key,
+        mapping_keypair.public_key,
+        product_keypair.public_key,
+    )
+
+    asyncio.run(
+        program_admin.send_transaction(
+            [instruction],
+            [funding_keypair, mapping_keypair, product_keypair],
+        )
+    )
 
 
 @click.command()
@@ -202,6 +282,7 @@ def sync(
     )
 
 
+cli.add_command(delete_price)
 cli.add_command(list_accounts)
 cli.add_command(restore_links)
 cli.add_command(sync)
