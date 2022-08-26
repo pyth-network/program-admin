@@ -283,6 +283,7 @@ def sync(
 
 
 cli.add_command(delete_price)
+cli.add_command(delete_product)
 cli.add_command(list_accounts)
 cli.add_command(restore_links)
 cli.add_command(sync)
