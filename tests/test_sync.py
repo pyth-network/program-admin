@@ -1,15 +1,20 @@
 import asyncio
 import os
-from tempfile import NamedTemporaryFile, TemporaryDirectory
 from pathlib import Path
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import pytest
 import ujson as json
 from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin
-from program_admin.parsing import parse_products_json, parse_publishers_json, parse_overrides_json, parse_permissions_json
-from program_admin.types import Network, ReferencePermissions, ReferenceOverrides
+from program_admin.parsing import (
+    parse_overrides_json,
+    parse_permissions_json,
+    parse_products_json,
+    parse_publishers_json,
+)
+from program_admin.types import Network, ReferenceOverrides, ReferencePermissions
 from program_admin.util import apply_overrides
 
 BTC_USD = {
@@ -136,6 +141,7 @@ def permissions2_json():
 
         yield jsonfile.name
 
+
 @pytest.fixture
 def empty_overrides_json():
     with NamedTemporaryFile() as jsonfile:
@@ -148,14 +154,15 @@ def empty_overrides_json():
 
         yield jsonfile.name
 
+
 @pytest.fixture
 def localhost_overrides_json():
     with NamedTemporaryFile() as jsonfile:
         jsonfile.write(
             json.dumps(
                 {
-                    'pythnet': {'AAPL': True, 'BTCUSD': False},
-                    'localhost': {'AAPL': False},
+                    "pythnet": {"AAPL": True, "BTCUSD": False},
+                    "localhost": {"AAPL": False},
                 },
             ).encode()
         )
@@ -254,38 +261,34 @@ def test_apply_overrides():
     }
 
     overrides: ReferenceOverrides = {}
-    result = apply_overrides(permissions, overrides, 'localhost')
-    assert(result == permissions)
+    result = apply_overrides(permissions, overrides, "localhost")
+    assert result == permissions
 
     overrides = {
-        'localhost': {
-            'BTCUSD': False,
-            'AAPL': True
-        },
-        'pythnet': {
-            'ETHUSD': False
-        }
+        "localhost": {"BTCUSD": False, "AAPL": True},
+        "pythnet": {"ETHUSD": False},
     }
 
-    result = apply_overrides(permissions, overrides, 'mainnet-beta')
-    assert(result == permissions)
+    result = apply_overrides(permissions, overrides, "mainnet-beta")
+    assert result == permissions
 
-    result = apply_overrides(permissions, overrides, 'localhost')
+    result = apply_overrides(permissions, overrides, "localhost")
     expected = {
         "AAPL": {"price": ["random"]},
         "BTCUSD": {"price": []},
         "ETHUSD": {"price": ["random"]},
     }
-    assert(result == expected)
+    assert result == expected
 
-    result = apply_overrides(permissions, overrides, 'pythnet')
+    result = apply_overrides(permissions, overrides, "pythnet")
     expected = {
         "AAPL": {"price": ["random"]},
         "BTCUSD": {"price": ["random"]},
         "ETHUSD": {"price": []},
     }
 
-    assert(result == expected)
+    assert result == expected
+
 
 # pylint: disable=protected-access,redefined-outer-name
 async def test_sync(
@@ -299,7 +302,7 @@ async def test_sync(
     empty_overrides_json,
     localhost_overrides_json,
 ):
-    network = 'localhost'
+    network = "localhost"
     program_admin = ProgramAdmin(
         network=network,
         key_dir=key_dir,
@@ -373,21 +376,21 @@ async def test_sync(
 
     await program_admin.refresh_program_accounts()
     product_accounts = list(program_admin._product_accounts.values())
-    price_accounts = list(program_admin._price_accounts.values())
-
-    is_enabled = {
-        "Crypto.BTC/USD": True,
-        "Equity.US.AAPL/USD": False
-    }
+    is_enabled = {"Crypto.BTC/USD": True, "Equity.US.AAPL/USD": False}
 
     for product_account in product_accounts:
         symbol = product_account.data.metadata["symbol"]
-        price_account = program_admin.get_price_account(product_account.data.first_price_account_key)
+        price_account = program_admin.get_price_account(
+            product_account.data.first_price_account_key
+        )
 
         if is_enabled[symbol]:
-            assert(price_account.data.price_components[0].publisher_key == random_publisher)
+            assert (
+                price_account.data.price_components[0].publisher_key == random_publisher
+            )
         else:
-            assert(len(price_account.data.price_components) == 0)
+            assert len(price_account.data.price_components) == 0
+
 
 async def sync_from_files(
     program_admin,
@@ -405,4 +408,10 @@ async def sync_from_files(
     ref_overrides = parse_overrides_json(Path(overrides_path))
     updated_permissions = apply_overrides(ref_permissions, ref_overrides, network)
 
-    return await program_admin.sync(ref_products, ref_publishers, updated_permissions, send_transactions, generate_keys)
+    return await program_admin.sync(
+        ref_products,
+        ref_publishers,
+        updated_permissions,
+        send_transactions,
+        generate_keys,
+    )

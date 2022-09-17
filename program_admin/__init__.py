@@ -47,6 +47,7 @@ RPC_ENDPOINTS: Dict[Network, str] = {
     "pythtest": "https://api.pythtest.pyth.network",
 }
 
+
 class ProgramAdmin:
     network: Network
     rpc_endpoint: str
@@ -233,7 +234,7 @@ class ProgramAdmin:
         product_updates: bool = False
 
         for jump_symbol, _price_account_map in ref_permissions.items():
-            ref_product = ref_products[jump_symbol]
+            ref_product = ref_products[jump_symbol]  # type: ignore
 
             logger.debug(f"Syncing product: {jump_symbol}")
             (
@@ -253,7 +254,7 @@ class ProgramAdmin:
 
         # Sync publishers
         for jump_symbol, _price_account_map in ref_permissions.items():
-            ref_product = ref_products[jump_symbol]
+            ref_product = ref_products[jump_symbol]  # type: ignore
 
             logger.debug(f"Syncing price: {jump_symbol}")
             (price_instructions, price_keypairs,) = await self.sync_price_instructions(

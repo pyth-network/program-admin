@@ -10,7 +10,12 @@ from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin, instructions
 from program_admin.keys import load_keypair, restore_symlink
-from program_admin.parsing import parse_products_json, parse_publishers_json, parse_overrides_json, parse_permissions_json
+from program_admin.parsing import (
+    parse_overrides_json,
+    parse_permissions_json,
+    parse_products_json,
+    parse_publishers_json,
+)
 from program_admin.util import apply_overrides
 
 
