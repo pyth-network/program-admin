@@ -271,6 +271,7 @@ async def test_sync(
     threw_error = False
     try:
         await sync_from_files(
+            program_admin,
             products_path=products2_json,
             publishers_path=publishers_json,
             permissions_path=permissions2_json,
