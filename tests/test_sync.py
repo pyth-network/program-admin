@@ -1,12 +1,15 @@
 import asyncio
 import os
 from tempfile import NamedTemporaryFile, TemporaryDirectory
+from pathlib import Path
 
 import pytest
 import ujson as json
 from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin
+from program_admin.parsing import parse_products_json, parse_publishers_json, parse_overrides_json, parse_permissions_json
+from program_admin.util import apply_overrides
 
 BTC_USD = {
     "account": "",
@@ -232,7 +235,8 @@ async def test_sync(
         commitment="confirmed",
     )
 
-    await program_admin.sync(
+    await sync_from_files(
+        program_admin,
         products_path=products_json,
         publishers_path=publishers_json,
         permissions_path=permissions_json,
@@ -255,7 +259,8 @@ async def test_sync(
     assert price_accounts[1].data.price_components[0].publisher_key == random_publisher
 
     # Syncing again with generate_keys=False should succeed
-    await program_admin.sync(
+    await sync_from_files(
+        program_admin,
         products_path=products_json,
         publishers_path=publishers_json,
         permissions_path=permissions_json,
@@ -265,7 +270,7 @@ async def test_sync(
     # Syncing a different product list should fail
     threw_error = False
     try:
-        await program_admin.sync(
+        await sync_from_files(
             products_path=products2_json,
             publishers_path=publishers_json,
             permissions_path=permissions2_json,
@@ -275,3 +280,19 @@ async def test_sync(
         threw_error = True
 
     assert threw_error
+
+async def sync_from_files(
+    program_admin,
+    products_path: str,
+    publishers_path: str,
+    permissions_path: str,
+    send_transactions: bool = True,
+    generate_keys: bool = False,
+):
+    ref_products = parse_products_json(Path(products_path))
+    ref_publishers = parse_publishers_json(Path(publishers_path))
+    updated_permissions = parse_permissions_json(Path(permissions_path))
+    # ref_overrides = parse_overrides_json(Path(permissions_path))
+    # updated_permissions = apply_overrides(ref_permissions, ref_overrides, network)
+
+    return await program_admin.sync(ref_products, ref_publishers, updated_permissions, send_transactions, generate_keys)

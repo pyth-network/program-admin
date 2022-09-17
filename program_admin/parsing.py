@@ -18,6 +18,7 @@ from program_admin.types import (
     PythMappingAccount,
     PythPriceAccount,
     PythProductAccount,
+    ReferenceOverrides,
     ReferencePermissions,
     ReferenceProduct,
     ReferencePublishers,
@@ -215,6 +216,9 @@ def parse_permissions_json(file_path: Path) -> ReferencePermissions:
     with file_path.open() as stream:
         return json.load(stream)
 
+def parse_overrides_json(file_path: Path) -> ReferenceOverrides:
+    with file_path.open() as stream:
+        return json.load(stream)
 
 def parse_products_json(file_path: Path) -> Dict[str, ReferenceProduct]:
     products: Dict[str, ReferenceProduct] = {}

@@ -6,7 +6,7 @@ from solana.rpc.async_api import AsyncClient
 from solana.transaction import SIG_LENGTH, Transaction
 from solana.utils import shortvec_encoding as shortvec
 
-from program_admin.types import PythMappingAccount
+from program_admin.types import PythMappingAccount, ReferencePermissions, ReferenceOverrides, Network
 
 MAPPING_ACCOUNT_SIZE = 20536  # https://github.com/pyth-network/pyth-client/blob/b49f73afe32ce8685a3d05e32d8f3bb51909b061/program/src/oracle/oracle.h#L88
 MAPPING_ACCOUNT_PRODUCT_LIMIT = 640
@@ -94,3 +94,19 @@ def sort_mapping_account_keys(accounts: List[PythMappingAccount]) -> List[Public
             current = previous_keys[current]
 
     return sorted_keys
+
+def apply_overrides(
+        ref_permissions: ReferencePermissions,
+        ref_overrides: ReferenceOverrides,
+        network: Network,
+    ) -> ReferencePermissions:
+    network_overrides = ref_overrides[network]
+
+    overridden_permissions = {}
+    for k, v in ref_permissions.items():
+        if k in network_overrides and not network_overrides[k]:
+            # Remove all publishers from all account types for this symbol
+            overridden_permissions[k] = [(k, []) for k in v.keys()]
+        else:
+            overridden_permissions[k] = v
+    return overridden_permissions
