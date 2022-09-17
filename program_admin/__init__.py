@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from typing import Dict, List, Literal, Tuple
+import time
 
 from loguru import logger
 from solana import system_program
@@ -219,6 +220,7 @@ class ProgramAdmin:
             instructions.extend(mapping_instructions)
             if send_transactions:
                 await self.send_transaction(mapping_instructions, mapping_keypairs)
+                time.sleep(5)
 
             await self.refresh_program_accounts()
 
