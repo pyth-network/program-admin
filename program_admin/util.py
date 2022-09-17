@@ -100,13 +100,13 @@ def apply_overrides(
         ref_overrides: ReferenceOverrides,
         network: Network,
     ) -> ReferencePermissions:
-    network_overrides = ref_overrides[network]
+    network_overrides = ref_overrides.get(network, {})
 
     overridden_permissions = {}
     for k, v in ref_permissions.items():
         if k in network_overrides and not network_overrides[k]:
             # Remove all publishers from all account types for this symbol
-            overridden_permissions[k] = [(k, []) for k in v.keys()]
+            overridden_permissions[k] = dict([(k, []) for k in v.keys()])
         else:
             overridden_permissions[k] = v
     return overridden_permissions
