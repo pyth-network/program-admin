@@ -3,7 +3,9 @@ from typing import Dict, List, Literal, TypedDict, Union
 
 from solana.publickey import PublicKey
 
-Network = Literal["devnet", "localhost", "mainnet-beta", "testnet"]
+Network = Literal[
+    "devnet", "localhost", "mainnet-beta", "testnet", "pythtest", "pythnet"
+]
 
 ReferenceProduct = TypedDict(
     "ReferenceProduct",
@@ -23,6 +25,9 @@ ReferencePublishers = TypedDict(
 )
 
 ReferencePermissions = Dict[str, Dict[str, List[str]]]
+
+# network -> symbol -> enabled / disabled. Default is no change to permissions.
+ReferenceOverrides = Dict[str, Dict[str, bool]]
 
 
 @dataclass

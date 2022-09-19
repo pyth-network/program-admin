@@ -1,5 +1,6 @@
 import asyncio
 import os
+from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import pytest
@@ -7,6 +8,13 @@ import ujson as json
 from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin
+from program_admin.parsing import (
+    parse_permissions_with_overrides,
+    parse_products_json,
+    parse_publishers_json,
+)
+from program_admin.types import Network, ReferenceOverrides, ReferencePermissions
+from program_admin.util import apply_overrides
 
 BTC_USD = {
     "account": "",
@@ -134,6 +142,35 @@ def permissions2_json():
 
 
 @pytest.fixture
+def empty_overrides_json():
+    with NamedTemporaryFile() as jsonfile:
+        jsonfile.write(
+            json.dumps(
+                {},
+            ).encode()
+        )
+        jsonfile.flush()
+
+        yield jsonfile.name
+
+
+@pytest.fixture
+def localhost_overrides_json():
+    with NamedTemporaryFile() as jsonfile:
+        jsonfile.write(
+            json.dumps(
+                {
+                    "pythnet": {"AAPL": True, "BTCUSD": False},
+                    "localhost": {"AAPL": False},
+                },
+            ).encode()
+        )
+        jsonfile.flush()
+
+        yield jsonfile.name
+
+
+@pytest.fixture
 async def validator():
     process = await asyncio.create_subprocess_shell(
         "solana-test-validator",
@@ -215,6 +252,43 @@ async def pyth_program(pyth_keypair):
     yield program_id
 
 
+def test_apply_overrides():
+    permissions: ReferencePermissions = {
+        "AAPL": {"price": ["random"]},
+        "BTCUSD": {"price": ["random"]},
+        "ETHUSD": {"price": ["random"]},
+    }
+
+    overrides: ReferenceOverrides = {}
+    result = apply_overrides(permissions, overrides, "localhost")
+    assert result == permissions
+
+    overrides = {
+        "localhost": {"BTCUSD": False, "AAPL": True},
+        "pythnet": {"ETHUSD": False},
+    }
+
+    result = apply_overrides(permissions, overrides, "mainnet-beta")
+    assert result == permissions
+
+    result = apply_overrides(permissions, overrides, "localhost")
+    expected = {
+        "AAPL": {"price": ["random"]},
+        "BTCUSD": {"price": []},
+        "ETHUSD": {"price": ["random"]},
+    }
+    assert result == expected
+
+    result = apply_overrides(permissions, overrides, "pythnet")
+    expected = {
+        "AAPL": {"price": ["random"]},
+        "BTCUSD": {"price": ["random"]},
+        "ETHUSD": {"price": []},
+    }
+
+    assert result == expected
+
+
 # pylint: disable=protected-access,redefined-outer-name
 async def test_sync(
     key_dir,
@@ -224,18 +298,24 @@ async def test_sync(
     publishers_json,
     permissions_json,
     permissions2_json,
+    empty_overrides_json,
+    localhost_overrides_json,
 ):
+    network = "localhost"
     program_admin = ProgramAdmin(
-        network="localhost",
+        network=network,
         key_dir=key_dir,
         program_key=pyth_program,
         commitment="confirmed",
     )
 
-    await program_admin.sync(
+    await sync_from_files(
+        program_admin,
         products_path=products_json,
         publishers_path=publishers_json,
         permissions_path=permissions_json,
+        overrides_path=empty_overrides_json,
+        network=network,
         generate_keys=True,
     )
 
@@ -255,23 +335,82 @@ async def test_sync(
     assert price_accounts[1].data.price_components[0].publisher_key == random_publisher
 
     # Syncing again with generate_keys=False should succeed
-    await program_admin.sync(
+    await sync_from_files(
+        program_admin,
         products_path=products_json,
         publishers_path=publishers_json,
         permissions_path=permissions_json,
+        overrides_path=empty_overrides_json,
+        network=network,
         generate_keys=False,
     )
 
     # Syncing a different product list should fail
     threw_error = False
     try:
-        await program_admin.sync(
+        await sync_from_files(
+            program_admin,
             products_path=products2_json,
             publishers_path=publishers_json,
             permissions_path=permissions2_json,
+            overrides_path=empty_overrides_json,
+            network=network,
             generate_keys=False,
         )
     except RuntimeError:
         threw_error = True
 
     assert threw_error
+
+    # Test overriding network configurations
+    await sync_from_files(
+        program_admin,
+        products_path=products_json,
+        publishers_path=publishers_json,
+        permissions_path=permissions_json,
+        overrides_path=localhost_overrides_json,
+        network=network,
+        generate_keys=False,
+    )
+
+    await program_admin.refresh_program_accounts()
+    product_accounts = list(program_admin._product_accounts.values())
+    is_enabled = {"Crypto.BTC/USD": True, "Equity.US.AAPL/USD": False}
+
+    for product_account in product_accounts:
+        symbol = product_account.data.metadata["symbol"]
+        price_account = program_admin.get_price_account(
+            product_account.data.first_price_account_key
+        )
+
+        if is_enabled[symbol]:
+            assert (
+                price_account.data.price_components[0].publisher_key == random_publisher
+            )
+        else:
+            assert len(price_account.data.price_components) == 0
+
+
+async def sync_from_files(
+    program_admin,
+    products_path: str,
+    publishers_path: str,
+    permissions_path: str,
+    overrides_path: str,
+    network: Network,
+    send_transactions: bool = True,
+    generate_keys: bool = False,
+):
+    ref_products = parse_products_json(Path(products_path))
+    ref_publishers = parse_publishers_json(Path(publishers_path))
+    ref_permissions = parse_permissions_with_overrides(
+        Path(permissions_path), Path(overrides_path), network
+    )
+
+    return await program_admin.sync(
+        ref_products,
+        ref_publishers,
+        ref_permissions,
+        send_transactions,
+        generate_keys,
+    )

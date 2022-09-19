@@ -10,7 +10,11 @@ from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin, instructions
 from program_admin.keys import load_keypair, restore_symlink
-from program_admin.parsing import parse_products_json, parse_publishers_json
+from program_admin.parsing import (
+    parse_permissions_with_overrides,
+    parse_products_json,
+    parse_publishers_json,
+)
 
 
 @click.group()
@@ -234,6 +238,9 @@ def restore_links(network, rpc_endpoint, program_key, keys, products, commitment
     "--permissions", help="Path to reference permissions file", envvar="PERMISSIONS"
 )
 @click.option(
+    "--overrides", help="Path to reference overrides file", envvar="OVERRIDES"
+)
+@click.option(
     "--commitment",
     help="Confirmation level to use",
     envvar="COMMITMENT",
@@ -259,6 +266,7 @@ def sync(
     products,
     publishers,
     permissions,
+    overrides,
     commitment,
     send_transactions,
     generate_keys,
@@ -271,11 +279,17 @@ def sync(
         commitment=commitment,
     )
 
+    ref_products = parse_products_json(Path(products))
+    ref_publishers = parse_publishers_json(Path(publishers))
+    ref_permissions = parse_permissions_with_overrides(
+        Path(permissions), Path(overrides), network
+    )
+
     asyncio.run(
         program_admin.sync(
-            products_path=products,
-            publishers_path=publishers,
-            permissions_path=permissions,
+            ref_products=ref_products,
+            ref_publishers=ref_publishers,
+            ref_permissions=ref_permissions,
             send_transactions=(send_transactions == "true"),
             generate_keys=(generate_keys == "true"),
         )

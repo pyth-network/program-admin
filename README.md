@@ -44,4 +44,5 @@ At this point, you can run commands in the project using `poetry run <command>` 
 ### Testing
 
 The unit tests require the [Solana command line tools](https://docs.solana.com/cli/install-solana-cli-tools) to be installed.
-Once these are installed, you can run the tests using `poetry run pytest`.
+Once these are installed, you can run the tests using `TEST_MODE=1 poetry run pytest`.
+(The `TEST_MODE=1` environment variable is required in order to hack around an issue that prevents us from creating mapping accounts in local tests.)

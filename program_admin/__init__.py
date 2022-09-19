@@ -15,6 +15,7 @@ from program_admin import instructions as pyth_program
 from program_admin.keys import load_keypair
 from program_admin.parsing import (
     parse_account,
+    parse_overrides_json,
     parse_permissions_json,
     parse_products_json,
     parse_publishers_json,
@@ -42,6 +43,8 @@ RPC_ENDPOINTS: Dict[Network, str] = {
     "localhost": "http://127.0.0.1:8899",
     "mainnet-beta": "https://api.mainnet-beta.solana.com",
     "testnet": "https://api.testnet.solana.com",
+    "pythnet": "https://pythnet.rpcpool.com",
+    "pythtest": "https://api.pythtest.pyth.network",
 }
 
 
@@ -199,9 +202,9 @@ class ProgramAdmin:
 
     async def sync(
         self,
-        products_path: str,
-        publishers_path: str,
-        permissions_path: str,
+        ref_products: ReferenceProduct,
+        ref_publishers: ReferencePublishers,
+        ref_permissions: ReferencePermissions,
         send_transactions: bool = True,
         generate_keys: bool = False,
     ) -> List[TransactionInstruction]:
@@ -227,13 +230,11 @@ class ProgramAdmin:
         # of the first mapping account capacity.
 
         # Sync product/price accounts
-        ref_products = parse_products_json(Path(products_path))
-        ref_publishers = parse_publishers_json(Path(publishers_path))
-        ref_permissions = parse_permissions_json(Path(permissions_path))
+
         product_updates: bool = False
 
         for jump_symbol, _price_account_map in ref_permissions.items():
-            ref_product = ref_products[jump_symbol]
+            ref_product = ref_products[jump_symbol]  # type: ignore
 
             logger.debug(f"Syncing product: {jump_symbol}")
             (
@@ -253,7 +254,7 @@ class ProgramAdmin:
 
         # Sync publishers
         for jump_symbol, _price_account_map in ref_permissions.items():
-            ref_product = ref_products[jump_symbol]
+            ref_product = ref_products[jump_symbol]  # type: ignore
 
             logger.debug(f"Syncing price: {jump_symbol}")
             (price_instructions, price_keypairs,) = await self.sync_price_instructions(
