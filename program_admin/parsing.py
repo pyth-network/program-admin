@@ -9,6 +9,7 @@ from solana.publickey import PublicKey
 from program_admin.types import (
     AccountData,
     MappingData,
+    Network,
     PriceComponent,
     PriceData,
     PriceInfo,
@@ -23,6 +24,7 @@ from program_admin.types import (
     ReferenceProduct,
     ReferencePublishers,
 )
+from program_admin.util import apply_overrides
 
 MAGIC_NUMBER = "0xa1b2c3d4"
 VERSION = 2
@@ -220,6 +222,15 @@ def parse_permissions_json(file_path: Path) -> ReferencePermissions:
 def parse_overrides_json(file_path: Path) -> ReferenceOverrides:
     with file_path.open() as stream:
         return json.load(stream)
+
+
+def parse_permissions_with_overrides(
+    permissions_path: Path, overrides_path: Path, network: Network
+) -> ReferencePermissions:
+    permissions = parse_permissions_json(permissions_path)
+    overrides = parse_overrides_json(overrides_path)
+
+    return apply_overrides(permissions, overrides, network)
 
 
 def parse_products_json(file_path: Path) -> Dict[str, ReferenceProduct]:

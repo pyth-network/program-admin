@@ -9,8 +9,7 @@ from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin
 from program_admin.parsing import (
-    parse_overrides_json,
-    parse_permissions_json,
+    parse_permissions_with_overrides,
     parse_products_json,
     parse_publishers_json,
 )
@@ -404,14 +403,14 @@ async def sync_from_files(
 ):
     ref_products = parse_products_json(Path(products_path))
     ref_publishers = parse_publishers_json(Path(publishers_path))
-    ref_permissions = parse_permissions_json(Path(permissions_path))
-    ref_overrides = parse_overrides_json(Path(overrides_path))
-    updated_permissions = apply_overrides(ref_permissions, ref_overrides, network)
+    ref_permissions = parse_permissions_with_overrides(
+        Path(permissions_path), Path(overrides_path), network
+    )
 
     return await program_admin.sync(
         ref_products,
         ref_publishers,
-        updated_permissions,
+        ref_permissions,
         send_transactions,
         generate_keys,
     )

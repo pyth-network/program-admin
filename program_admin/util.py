@@ -112,7 +112,7 @@ def apply_overrides(
     for key, value in ref_permissions.items():
         if key in network_overrides and not network_overrides[key]:
             # Remove all publishers from all account types for this symbol
-            overridden_permissions[key] = {(k, []) for k in value.keys()}  # type: ignore
+            overridden_permissions[key] = {k: [] for k in value.keys()}
         else:
             overridden_permissions[key] = value
     return overridden_permissions

@@ -11,12 +11,10 @@ from solana.publickey import PublicKey
 from program_admin import ProgramAdmin, instructions
 from program_admin.keys import load_keypair, restore_symlink
 from program_admin.parsing import (
-    parse_overrides_json,
-    parse_permissions_json,
+    parse_permissions_with_overrides,
     parse_products_json,
     parse_publishers_json,
 )
-from program_admin.util import apply_overrides
 
 
 @click.group()
@@ -283,15 +281,15 @@ def sync(
 
     ref_products = parse_products_json(Path(products))
     ref_publishers = parse_publishers_json(Path(publishers))
-    ref_permissions = parse_permissions_json(Path(permissions))
-    ref_overrides = parse_overrides_json(Path(overrides))
-    updated_permissions = apply_overrides(ref_permissions, ref_overrides, network)
+    ref_permissions = parse_permissions_with_overrides(
+        Path(permissions), Path(overrides), network
+    )
 
     asyncio.run(
         program_admin.sync(
             ref_products=ref_products,
             ref_publishers=ref_publishers,
-            ref_permissions=updated_permissions,
+            ref_permissions=ref_permissions,
             send_transactions=(send_transactions == "true"),
             generate_keys=(generate_keys == "true"),
         )
