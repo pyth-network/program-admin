@@ -128,7 +128,10 @@ class ProgramAdmin:
                     continue
 
                 if isinstance(account, PythMappingAccount):
-                    actual_pair = (os.environ["PROGRAM_KEY"], str(account.public_key))
+                    actual_pair = (
+                        os.environ.get("PROGRAM_KEY") or str(self.program_key),
+                        str(account.public_key),
+                    )
                     test_mode = os.environ.get("TEST_MODE")
 
                     if test_mode or actual_pair in reference_pairs:
