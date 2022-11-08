@@ -14,6 +14,7 @@ COMMAND_UPD_PRODUCT = 3
 COMMAND_ADD_PRICE = 4
 COMMAND_ADD_PUBLISHER = 5
 COMMAND_DEL_PUBLISHER = 6
+COMMAND_MIN_PUBLISHERS = 12
 COMMAND_DEL_PRICE = 15
 COMMAND_DEL_PRODUCT = 16
 PRICE_TYPE_PRICE = 1
@@ -186,6 +187,39 @@ def delete_price(
         program_id=program_key,
     )
 
+def set_minimum_publishers(
+    program_key: PublicKey,
+    funding_key: PublicKey,
+    price_account_key: PublicKey,
+    minimum_publishers: int
+) -> TransactionInstruction:
+    """
+    Pyth program set_minimum_publishers instruction
+
+    accounts:
+    - funding account (signer, writable)
+    - price account (signer, writable)
+    """ 
+    
+    layout = Struct(
+        "version" / Int32ul, "command" / Int32sl, "minimum_publishers" / Int32sl
+    )
+    
+    data = layout.build(
+        dict(
+            version=PROGRAM_VERSION,
+            command=COMMAND_MIN_PUBLISHERS,
+            minimum_publishers=minimum_publishers
+        )
+    )
+    return TransactionInstruction(
+        data=data,
+        keys=[
+            AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=price_account_key, is_signer=True, is_writable=True),
+        ],
+        program_id=program_key,
+    )
 
 def toggle_publisher(
     program_key: PublicKey,
