@@ -200,11 +200,9 @@ def set_minimum_publishers(
     - funding account (signer, writable)
     - price account (signer, writable)
     """ 
-    
     layout = Struct(
         "version" / Int32ul, "command" / Int32sl, "minimum_publishers" / Int32sl
     )
-    
     data = layout.build(
         dict(
             version=PROGRAM_VERSION,
@@ -212,6 +210,7 @@ def set_minimum_publishers(
             minimum_publishers=minimum_publishers
         )
     )
+    
     return TransactionInstruction(
         data=data,
         keys=[
