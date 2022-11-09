@@ -5,6 +5,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import pytest
 import ujson as json
+import program_admin.instructions as instructions
 from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin
@@ -15,6 +16,7 @@ from program_admin.parsing import (
 )
 from program_admin.types import Network, ReferenceOverrides, ReferencePermissions
 from program_admin.util import apply_overrides
+from program_admin.keys import load_keypair
 
 BTC_USD = {
     "account": "",
@@ -29,7 +31,7 @@ BTC_USD = {
     "metadata": {
         "jump_id": "78876709",
         "jump_symbol": "BTCUSD",
-        "price_exp": -8,
+        "price_exp": -8
     },
 }
 AAPL_USD = {
@@ -48,7 +50,7 @@ AAPL_USD = {
     "metadata": {
         "jump_id": "186",
         "jump_symbol": "AAPL",
-        "price_exp": -5,
+        "price_exp": -5
     },
 }
 ETH_USD = {
@@ -64,7 +66,7 @@ ETH_USD = {
     "metadata": {
         "jump_id": "12345",
         "jump_symbol": "ETHUSD",
-        "price_exp": -8,
+        "price_exp": -8
     },
 }
 
@@ -334,6 +336,7 @@ async def test_sync(
     assert price_accounts[0].data.price_components[0].publisher_key == random_publisher
     assert price_accounts[1].data.price_components[0].publisher_key == random_publisher
 
+
     # Syncing again with generate_keys=False should succeed
     await sync_from_files(
         program_admin,
@@ -373,6 +376,20 @@ async def test_sync(
         generate_keys=False,
     )
 
+    # Set minimum publishers testing
+    funding_key = load_keypair("funding", key_dir=key_dir)
+    assert price_accounts[0].data.min_publishers == 0
+    min_pub_account_symbol = product_accounts[0].data.metadata["symbol"]
+    min_pub_instruction = instructions.set_minimum_publishers(
+        pyth_program,
+        funding_key.public_key,
+        product_accounts[0].data.first_price_account_key,
+        10)
+    signers = [funding_key.public_key, product_accounts[0].data.first_price_account_key]
+
+    await program_admin.send_transaction([min_pub_instruction], signers)
+
+
     await program_admin.refresh_program_accounts()
     product_accounts = list(program_admin._product_accounts.values())
     is_enabled = {"Crypto.BTC/USD": True, "Equity.US.AAPL/USD": False}
@@ -383,7 +400,7 @@ async def test_sync(
             product_account.data.first_price_account_key
         )
 
-        if is_enabled[symbol]:
+        if is_enabled[symbol]:      
             assert (
                 price_account.data.price_components[0].publisher_key == random_publisher
             )
