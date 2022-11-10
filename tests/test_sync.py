@@ -7,7 +7,8 @@ import pytest
 import ujson as json
 from solana.publickey import PublicKey
 
-from program_admin import ProgramAdmin
+from program_admin import ProgramAdmin, instructions
+from program_admin.keys import load_keypair
 from program_admin.parsing import (
     parse_permissions_with_overrides,
     parse_products_json,
@@ -26,11 +27,7 @@ BTC_USD = {
         "generic_symbol": "BTCUSD",
         "description": "BTC/USD",
     },
-    "metadata": {
-        "jump_id": "78876709",
-        "jump_symbol": "BTCUSD",
-        "price_exp": -8,
-    },
+    "metadata": {"jump_id": "78876709", "jump_symbol": "BTCUSD", "price_exp": -8},
 }
 AAPL_USD = {
     "account": "",
@@ -45,11 +42,7 @@ AAPL_USD = {
         "symbol": "Equity.US.AAPL/USD",
         "base": "AAPL",
     },
-    "metadata": {
-        "jump_id": "186",
-        "jump_symbol": "AAPL",
-        "price_exp": -5,
-    },
+    "metadata": {"jump_id": "186", "jump_symbol": "AAPL", "price_exp": -5},
 }
 ETH_USD = {
     "account": "",
@@ -61,11 +54,7 @@ ETH_USD = {
         "generic_symbol": "ETHUSD",
         "description": "ETH/USD",
     },
-    "metadata": {
-        "jump_id": "12345",
-        "jump_symbol": "ETHUSD",
-        "price_exp": -8,
-    },
+    "metadata": {"jump_id": "12345", "jump_symbol": "ETHUSD", "price_exp": -8},
 }
 
 
@@ -373,6 +362,20 @@ async def test_sync(
         generate_keys=False,
     )
 
+    # Set minimum publishers testing
+    funding_key = load_keypair("funding", key_dir=key_dir)
+    assert price_accounts[0].data.min_publishers == 0
+    min_pub_account_symbol = product_accounts[0].data.metadata["symbol"]
+    price_keypair = load_keypair(
+        product_accounts[0].data.first_price_account_key, key_dir=key_dir
+    )
+    min_pub_instruction = instructions.set_minimum_publishers(
+        pyth_program, funding_key.public_key, price_keypair.public_key, 10
+    )
+    await program_admin.send_transaction(
+        [min_pub_instruction], [funding_key, price_keypair]
+    )
+
     await program_admin.refresh_program_accounts()
     product_accounts = list(program_admin._product_accounts.values())
     is_enabled = {"Crypto.BTC/USD": True, "Equity.US.AAPL/USD": False}
@@ -382,6 +385,9 @@ async def test_sync(
         price_account = program_admin.get_price_account(
             product_account.data.first_price_account_key
         )
+
+        if symbol == min_pub_account_symbol:
+            assert price_account.data.min_publishers == 10
 
         if is_enabled[symbol]:
             assert (
