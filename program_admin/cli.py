@@ -72,6 +72,43 @@ def delete_price(network, rpc_endpoint, program_key, keys, commitment, product, 
     envvar="COMMITMENT",
     default="finalized",
 )
+@click.option("--price", help="Public key of the price account")
+@click.option("--min-pub", help="Minimum publishers value to set for this price")
+def set_minimum_publishers_for_price(
+    network, rpc_endpoint, program_key, keys, commitment, price, min_pub
+):
+    program_admin = ProgramAdmin(
+        network=network,
+        rpc_endpoint=rpc_endpoint,
+        key_dir=keys,
+        program_key=program_key,
+        commitment=commitment,
+    )
+    funding_keypair = load_keypair("funding", key_dir=keys)
+    price_keypair = load_keypair(PublicKey(price), key_dir=keys)
+    instruction = instructions.set_minimum_publishers(
+        program_key, funding_keypair.public_key, price_keypair.public_key, min_pub
+    )
+
+    asyncio.run(
+        program_admin.send_transaction(
+            [instruction],
+            [funding_keypair, price_keypair],
+        )
+    )
+
+
+@click.command()
+@click.option("--network", help="Solana network", envvar="NETWORK")
+@click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
+@click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
+@click.option("--keys", help="Path to keys directory", envvar="KEYS")
+@click.option(
+    "--commitment",
+    help="Confirmation level to use",
+    envvar="COMMITMENT",
+    default="finalized",
+)
 @click.option("--mapping", help="Public key of the mapping account")
 @click.option("--product", help="Public key of the product account")
 def delete_product(
