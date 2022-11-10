@@ -7,8 +7,7 @@ import pytest
 import ujson as json
 from solana.publickey import PublicKey
 
-import program_admin.instructions as instructions
-from program_admin import ProgramAdmin
+from program_admin import ProgramAdmin, instructions
 from program_admin.keys import load_keypair
 from program_admin.parsing import (
     parse_permissions_with_overrides,
@@ -373,7 +372,6 @@ async def test_sync(
     min_pub_instruction = instructions.set_minimum_publishers(
         pyth_program, funding_key.public_key, price_keypair.public_key, 10
     )
-    signers = [funding_key.public_key, product_accounts[0].data.first_price_account_key]
     await program_admin.send_transaction(
         [min_pub_instruction], [funding_key, price_keypair]
     )

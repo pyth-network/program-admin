@@ -1,6 +1,6 @@
 from typing import Dict
 
-from construct import Bytes, Int8ub, Int32sl, Int32ul, Struct
+from construct import Bytes, Int32sl, Int32ul, Struct
 from solana.publickey import PublicKey
 from solana.transaction import AccountMeta, TransactionInstruction
 
