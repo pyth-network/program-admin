@@ -60,6 +60,7 @@ def delete_price(network, rpc_endpoint, program_key, keys, commitment, product, 
         )
     )
 
+
 @click.command()
 @click.option("--network", help="Solana network", envvar="NETWORK")
 @click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
@@ -73,7 +74,9 @@ def delete_price(network, rpc_endpoint, program_key, keys, commitment, product, 
 )
 @click.option("--price", help="Public key of the price account")
 @click.option("--min-pub", help="Minimum publishers value to set for this price")
-def set_minimum_publishers_for_price(network, rpc_endpoint, program_key, keys, commitment, price, min_pub):
+def set_minimum_publishers_for_price(
+    network, rpc_endpoint, program_key, keys, commitment, price, min_pub
+):
     program_admin = ProgramAdmin(
         network=network,
         rpc_endpoint=rpc_endpoint,
@@ -84,16 +87,13 @@ def set_minimum_publishers_for_price(network, rpc_endpoint, program_key, keys, c
     funding_keypair = load_keypair("funding", key_dir=keys)
     price_keypair = load_keypair(PublicKey(price), key_dir=keys)
     instruction = instructions.set_minimum_publishers(
-        program_key,
-        funding_keypair.public_key,
-        price_keypair.public_key,
-        min_pub
+        program_key, funding_keypair.public_key, price_keypair.public_key, min_pub
     )
 
     asyncio.run(
         program_admin.send_transaction(
             [instruction],
-            [funding_keypair, product_keypair, price_keypair],
+            [funding_keypair, price_keypair],
         )
     )
 
