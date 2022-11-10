@@ -5,10 +5,11 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import pytest
 import ujson as json
-import program_admin.instructions as instructions
 from solana.publickey import PublicKey
 
+import program_admin.instructions as instructions
 from program_admin import ProgramAdmin
+from program_admin.keys import load_keypair
 from program_admin.parsing import (
     parse_permissions_with_overrides,
     parse_products_json,
@@ -16,7 +17,6 @@ from program_admin.parsing import (
 )
 from program_admin.types import Network, ReferenceOverrides, ReferencePermissions
 from program_admin.util import apply_overrides
-from program_admin.keys import load_keypair
 
 BTC_USD = {
     "account": "",
@@ -28,11 +28,7 @@ BTC_USD = {
         "generic_symbol": "BTCUSD",
         "description": "BTC/USD",
     },
-    "metadata": {
-        "jump_id": "78876709",
-        "jump_symbol": "BTCUSD",
-        "price_exp": -8
-    },
+    "metadata": {"jump_id": "78876709", "jump_symbol": "BTCUSD", "price_exp": -8},
 }
 AAPL_USD = {
     "account": "",
@@ -47,11 +43,7 @@ AAPL_USD = {
         "symbol": "Equity.US.AAPL/USD",
         "base": "AAPL",
     },
-    "metadata": {
-        "jump_id": "186",
-        "jump_symbol": "AAPL",
-        "price_exp": -5
-    },
+    "metadata": {"jump_id": "186", "jump_symbol": "AAPL", "price_exp": -5},
 }
 ETH_USD = {
     "account": "",
@@ -63,11 +55,7 @@ ETH_USD = {
         "generic_symbol": "ETHUSD",
         "description": "ETH/USD",
     },
-    "metadata": {
-        "jump_id": "12345",
-        "jump_symbol": "ETHUSD",
-        "price_exp": -8
-    },
+    "metadata": {"jump_id": "12345", "jump_symbol": "ETHUSD", "price_exp": -8},
 }
 
 
@@ -336,7 +324,6 @@ async def test_sync(
     assert price_accounts[0].data.price_components[0].publisher_key == random_publisher
     assert price_accounts[1].data.price_components[0].publisher_key == random_publisher
 
-
     # Syncing again with generate_keys=False should succeed
     await sync_from_files(
         program_admin,
@@ -380,19 +367,16 @@ async def test_sync(
     funding_key = load_keypair("funding", key_dir=key_dir)
     assert price_accounts[0].data.min_publishers == 0
     min_pub_account_symbol = product_accounts[0].data.metadata["symbol"]
-    price_keypair = load_keypair(product_accounts[0].data.first_price_account_key, key_dir=key_dir)
+    price_keypair = load_keypair(
+        product_accounts[0].data.first_price_account_key, key_dir=key_dir
+    )
     min_pub_instruction = instructions.set_minimum_publishers(
-        pyth_program,
-        funding_key.public_key,
-        price_keypair.public_key,
-        10)
-    print(min_pub_instruction)
+        pyth_program, funding_key.public_key, price_keypair.public_key, 10
+    )
     signers = [funding_key.public_key, product_accounts[0].data.first_price_account_key]
-    print("Test keys")
-    print(signers[0])
-    print(signers[1])
-    await program_admin.send_transaction([min_pub_instruction], [funding_key, price_keypair ])
-
+    await program_admin.send_transaction(
+        [min_pub_instruction], [funding_key, price_keypair]
+    )
 
     await program_admin.refresh_program_accounts()
     product_accounts = list(program_admin._product_accounts.values())
@@ -407,7 +391,7 @@ async def test_sync(
         if symbol == min_pub_account_symbol:
             assert price_account.data.min_publishers == 10
 
-        if is_enabled[symbol]:      
+        if is_enabled[symbol]:
             assert (
                 price_account.data.price_components[0].publisher_key == random_publisher
             )
