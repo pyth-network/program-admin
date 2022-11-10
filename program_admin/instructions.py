@@ -1,6 +1,6 @@
 from typing import Dict
 
-from construct import Bytes, Int32sl, Int32ul, Struct
+from construct import Bytes, Int32sl, Int32ul, Struct, Int8ub
 from solana.publickey import PublicKey
 from solana.transaction import AccountMeta, TransactionInstruction
 
@@ -199,7 +199,7 @@ def set_minimum_publishers(
 
     accounts:
     - funding account (signer, writable)
-    - price account (signer, writable)
+    - price account (writable)
     """
     layout = Struct(
         "version" / Int32ul, "command" / Int32sl, "minimum_publishers" / Int32sl
