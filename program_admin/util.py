@@ -3,6 +3,7 @@ from typing import Dict, List
 from solana.blockhash import Blockhash
 from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
+from solana.rpc.commitment import Commitment
 from solana.transaction import SIG_LENGTH, Transaction
 from solana.utils import shortvec_encoding as shortvec
 
@@ -21,7 +22,12 @@ SOL_LAMPORTS = pow(10, 9)
 
 
 async def recent_blockhash(client: AsyncClient) -> Blockhash:
-    blockhash_response = await client.get_recent_blockhash()
+    blockhash_response = await client.get_recent_blockhash(
+        commitment=Commitment("finalized")
+    )
+
+    if not "result" in blockhash_response:
+        raise RuntimeError("Failed to get recent blockhash")
 
     return Blockhash(blockhash_response["result"]["value"]["blockhash"])
 
