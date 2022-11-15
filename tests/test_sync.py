@@ -57,6 +57,10 @@ ETH_USD = {
     "metadata": {"jump_id": "12345", "jump_symbol": "ETHUSD", "price_exp": -8},
 }
 
+@pytest.fixture
+def check_test_env_var():
+    if not os.environ.get("TEST_MODE"):
+        raise RuntimeError("Environment variable TEST_MODE must be set in order for tests to run. If testing on a local machine, set via TEST_MODE=1")
 
 @pytest.fixture
 def key_dir():
@@ -280,6 +284,7 @@ def test_apply_overrides():
 
 # pylint: disable=protected-access,redefined-outer-name
 async def test_sync(
+    check_test_env_var,
     key_dir,
     pyth_program,
     products_json,
