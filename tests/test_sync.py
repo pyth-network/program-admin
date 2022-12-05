@@ -381,6 +381,13 @@ async def test_sync(
     min_pub_instruction = instructions.set_minimum_publishers(
         pyth_program, funding_key.public_key, price_keypair.public_key, 10
     )
+
+    # Test multisig print output
+    multisig_output = await program_admin.send_transaction(
+        [min_pub_instruction], [funding_key, price_keypair], multisig=True
+    )
+    assert isinstance(multisig_output, bytes)
+
     await program_admin.send_transaction(
         [min_pub_instruction], [funding_key, price_keypair]
     )

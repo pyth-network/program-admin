@@ -151,6 +151,7 @@ class ProgramAdmin:
         self,
         instructions: List[TransactionInstruction],
         signers: List[Keypair],
+        multisig: bool = False,
     ):
         if not instructions:
             return
@@ -187,21 +188,27 @@ class ProgramAdmin:
                 transaction.sign(*signers)
                 ix_index += 1
 
-            response = await client.send_raw_transaction(
-                transaction.serialize(),
-                opts=TxOpts(
-                    skip_confirmation=False, preflight_commitment=self.commitment
-                ),
-            )
+            if multisig:
+                multisig_output = transaction.serialize()
+            else:
+                response = await client.send_raw_transaction(
+                    transaction.serialize(),
+                    opts=TxOpts(
+                        skip_confirmation=False, preflight_commitment=self.commitment
+                    ),
+                )
+                logger.debug(f"Transaction: {response['result']}")
 
             logger.debug(f"Sent {ix_index} instructions")
-            logger.debug(f"Transaction: {response['result']}")
 
             remaining_instructions = instructions[ix_index:]
 
             if remaining_instructions:
                 logger.debug("Sending remaining instructions in separate transaction")
                 await self.send_transaction(remaining_instructions, signers)
+            else:
+                if multisig:
+                    return multisig_output
 
     async def sync(
         self,
