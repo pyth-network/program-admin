@@ -35,7 +35,15 @@ def cli():
 )
 @click.option("--product", help="Public key of the product account")
 @click.option("--price", help="Public key of the price account")
-def delete_price(network, rpc_endpoint, program_key, keys, commitment, product, price):
+@click.option(
+    "--dump",
+    help="Output instructions rather than transact",
+    envvar="DUMP",
+    default=False,
+)
+def delete_price(
+    network, rpc_endpoint, program_key, keys, commitment, product, price, dump
+):
     program_admin = ProgramAdmin(
         network=network,
         rpc_endpoint=rpc_endpoint,
@@ -57,6 +65,7 @@ def delete_price(network, rpc_endpoint, program_key, keys, commitment, product, 
         program_admin.send_transaction(
             [instruction],
             [funding_keypair, product_keypair, price_keypair],
+            dump_instructions=dump,
         )
     )
 
@@ -74,8 +83,14 @@ def delete_price(network, rpc_endpoint, program_key, keys, commitment, product, 
 )
 @click.option("--price", help="Public key of the price account")
 @click.option("--min-pub", help="Minimum publishers value to set for this price")
+@click.option(
+    "--dump",
+    help="Output instructions rather than transact",
+    envvar="DUMP",
+    default=False,
+)
 def set_minimum_publishers_for_price(
-    network, rpc_endpoint, program_key, keys, commitment, price, min_pub
+    network, rpc_endpoint, program_key, keys, commitment, price, min_pub, dump
 ):
     program_admin = ProgramAdmin(
         network=network,
@@ -92,8 +107,7 @@ def set_minimum_publishers_for_price(
 
     asyncio.run(
         program_admin.send_transaction(
-            [instruction],
-            [funding_keypair, price_keypair],
+            [instruction], [funding_keypair, price_keypair], dump_instructions=dump
         )
     )
 
@@ -111,8 +125,14 @@ def set_minimum_publishers_for_price(
 )
 @click.option("--mapping", help="Public key of the mapping account")
 @click.option("--product", help="Public key of the product account")
+@click.option(
+    "--dump",
+    help="Output instructions rather than transact",
+    envvar="DUMP",
+    default=False,
+)
 def delete_product(
-    network, rpc_endpoint, program_key, keys, commitment, mapping, product
+    network, rpc_endpoint, program_key, keys, commitment, mapping, product, dump
 ):
     program_admin = ProgramAdmin(
         network=network,
@@ -135,6 +155,7 @@ def delete_product(
         program_admin.send_transaction(
             [instruction],
             [funding_keypair, mapping_keypair, product_keypair],
+            dump_instructions=dump,
         )
     )
 
@@ -338,6 +359,7 @@ cli.add_command(delete_product)
 cli.add_command(list_accounts)
 cli.add_command(restore_links)
 cli.add_command(sync)
+cli.add_command(set_minimum_publishers_for_price)
 
 
 logger.remove()

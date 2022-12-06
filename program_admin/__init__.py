@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 from typing import Dict, List, Literal, Tuple
@@ -151,7 +152,7 @@ class ProgramAdmin:
         self,
         instructions: List[TransactionInstruction],
         signers: List[Keypair],
-        multisig: bool = False,
+        dump_instructions: bool = False,
     ):
         if not instructions:
             return
@@ -166,6 +167,10 @@ class ProgramAdmin:
             transaction.sign(*signers)
 
             ix_index = 1
+
+            if dump_instructions:
+                instruction_output = instructions[0].data
+                print(instruction_output)
 
             # FIXME: Ideally, we would compute the exact additional size of each
             # instruction, add it to the current transaction size and compare
@@ -188,9 +193,7 @@ class ProgramAdmin:
                 transaction.sign(*signers)
                 ix_index += 1
 
-            if multisig:
-                multisig_output = transaction.serialize()
-            else:
+            if not dump_instructions:
                 response = await client.send_raw_transaction(
                     transaction.serialize(),
                     opts=TxOpts(
@@ -207,8 +210,8 @@ class ProgramAdmin:
                 logger.debug("Sending remaining instructions in separate transaction")
                 await self.send_transaction(remaining_instructions, signers)
             else:
-                if multisig:
-                    return multisig_output
+                if dump_instructions:
+                    return instruction_output
 
     async def sync(
         self,
