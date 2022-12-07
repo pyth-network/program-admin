@@ -1,5 +1,6 @@
 import json
 import os
+from dataclasses import asdict
 from pathlib import Path
 from typing import Dict, List, Literal, Tuple
 
@@ -169,8 +170,20 @@ class ProgramAdmin:
             ix_index = 1
 
             if dump_instructions:
-                instruction_output = instructions[0].data
-                print(instruction_output)
+                instruction_output = {
+                    "program_id": instructions[0].program_id,
+                    "data": instructions[0].data.decode(),
+                }
+                accounts = []
+                for account in instructions[0].keys:
+                    account_data = {
+                        "pubkey": str(account.pubkey),
+                        "is_signer": account.is_signer,
+                        "is_writable": account.is_writable,
+                    }
+                    accounts.append(account_data)
+                instruction_output["accounts"] = accounts
+                print(json.dumps(instruction_output))
 
             # FIXME: Ideally, we would compute the exact additional size of each
             # instruction, add it to the current transaction size and compare

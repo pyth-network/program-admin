@@ -386,7 +386,7 @@ async def test_sync(
     instruction_output = await program_admin.send_transaction(
         [min_pub_instruction], [funding_key, price_keypair], dump_instructions=True
     )
-    assert isinstance(instruction_output, bytes)
+    assert isinstance(instruction_output, dict)
 
     await program_admin.send_transaction(
         [min_pub_instruction], [funding_key, price_keypair]
