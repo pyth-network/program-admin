@@ -82,7 +82,7 @@ def delete_price(
     default="finalized",
 )
 @click.option("--price", help="Public key of the price account")
-@click.option("--min-pub", help="Minimum publishers value to set for this price")
+@click.option("--min-pub", help="Minimum publishers value to set for this price", type=int)
 @click.option(
     "--dump",
     help="Output instructions rather than transact",
@@ -102,7 +102,7 @@ def set_minimum_publishers_for_price(
     funding_keypair = load_keypair("funding", key_dir=keys)
     price_keypair = load_keypair(PublicKey(price), key_dir=keys)
     instruction = instructions.set_minimum_publishers(
-        program_key, funding_keypair.public_key, price_keypair.public_key, min_pub
+        program_key, funding_keypair.public_key, price_keypair.public_key, min_pub)
     )
 
     asyncio.run(
