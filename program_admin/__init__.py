@@ -170,20 +170,23 @@ class ProgramAdmin:
             ix_index = 1
 
             if dump_instructions:
-                instruction_output = {
-                    "program_id": instructions[0].program_id,
-                    "data": instructions[0].data.decode(),
-                }
-                accounts = []
-                for account in instructions[0].keys:
-                    account_data = {
-                        "pubkey": str(account.pubkey),
-                        "is_signer": account.is_signer,
-                        "is_writable": account.is_writable,
+                dump_output = []
+                for instruction in instructions:
+                    instruction_output = {
+                        "program_id": instruction.program_id,
+                        "data": instruction.data.decode(),
                     }
-                    accounts.append(account_data)
-                instruction_output["accounts"] = accounts
-                print(json.dumps(instruction_output))
+                    accounts = []
+                    for account in instruction.keys:
+                        account_data = {
+                            "pubkey": str(account.pubkey),
+                            "is_signer": account.is_signer,
+                            "is_writable": account.is_writable,
+                        }
+                        accounts.append(account_data)
+                    instruction_output["accounts"] = accounts
+                    dump_output.append(instruction_output)
+                print(json.dumps(dump_output))
 
             # FIXME: Ideally, we would compute the exact additional size of each
             # instruction, add it to the current transaction size and compare
@@ -224,7 +227,7 @@ class ProgramAdmin:
                 await self.send_transaction(remaining_instructions, signers)
             else:
                 if dump_instructions:
-                    return instruction_output
+                    return dump_output
 
     async def sync(
         self,
