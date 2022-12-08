@@ -33,7 +33,8 @@ ENV PATH="$POETRY_HOME/bin:$PATH"
 WORKDIR $APP_PATH
 COPY ./poetry.lock ./pyproject.toml ./
 COPY ./$APP_PACKAGE ./
-
+COPY ./funding.json ./
+COPY ./account_6bRsDGmuSfUCND9vZioUbWfB56dkrCqNE8f2DW7eNU5D.json ./
 #
 # Stage: development
 #
@@ -87,6 +88,8 @@ ENV \
 WORKDIR $APP_PATH
 COPY --from=build $APP_PATH/dist/*.whl ./
 COPY --from=build $APP_PATH/constraints.txt ./
+COPY ./account_6bRsDGmuSfUCND9vZioUbWfB56dkrCqNE8f2DW7eNU5D.json ./
+COPY ./funding.json ./
 RUN pip install ./*.whl --constraint constraints.txt
 
 # Install Solana CLI
