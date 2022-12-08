@@ -82,7 +82,9 @@ def delete_price(
     default="finalized",
 )
 @click.option("--price", help="Public key of the price account")
-@click.option("--min-pub", help="Minimum publishers value to set for this price")
+@click.option(
+    "--min-pub", help="Minimum publishers value to set for this price", type=int
+)
 @click.option(
     "--dump",
     help="Output instructions rather than transact",
