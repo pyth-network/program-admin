@@ -188,10 +188,11 @@ class ProgramAdmin:
                     instruction_output["accounts"] = accounts
                     dump_output.append(instruction_output)
                 sys.stdout.write(json.dumps(dump_output))
-                with open(
-                    "/var/test/instruction.json", "w", encoding="utf-8"
-                ) as out_file:
-                    out_file.write(json.dumps(dump_output))
+                if not os.environ.get("TEST_MODE"):
+                    with open(
+                        "/var/test/instruction.json", "w", encoding="utf-8"
+                    ) as out_file:
+                        out_file.write(json.dumps(dump_output))
 
             # FIXME: Ideally, we would compute the exact additional size of each
             # instruction, add it to the current transaction size and compare
