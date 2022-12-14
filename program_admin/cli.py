@@ -41,8 +41,14 @@ def cli():
     envvar="DUMP",
     default=False,
 )
+@click.option(
+    "--outfile",
+    help="File location to write instructions",
+    envvar="OUTFILE",
+    default="./instructions.json",
+)
 def delete_price(
-    network, rpc_endpoint, program_key, keys, commitment, product, price, dump
+    network, rpc_endpoint, program_key, keys, commitment, product, price, dump, outfile
 ):
     program_admin = ProgramAdmin(
         network=network,
@@ -66,6 +72,7 @@ def delete_price(
             [instruction],
             [funding_keypair, product_keypair, price_keypair],
             dump_instructions=dump,
+            file_location=outfile,
         )
     )
 
@@ -91,8 +98,14 @@ def delete_price(
     envvar="DUMP",
     default=False,
 )
+@click.option(
+    "--outfile",
+    help="File location to write instructions",
+    envvar="OUTFILE",
+    default="./instructions.json",
+)
 def set_minimum_publishers_for_price(
-    network, rpc_endpoint, program_key, keys, commitment, price, min_pub, dump
+    network, rpc_endpoint, program_key, keys, commitment, price, min_pub, dump, outfile
 ):
     program_admin = ProgramAdmin(
         network=network,
@@ -109,7 +122,10 @@ def set_minimum_publishers_for_price(
 
     asyncio.run(
         program_admin.send_transaction(
-            [instruction], [funding_keypair, price_keypair], dump_instructions=dump
+            [instruction],
+            [funding_keypair, price_keypair],
+            dump_instructions=dump,
+            file_location=outfile,
         )
     )
 
@@ -133,8 +149,22 @@ def set_minimum_publishers_for_price(
     envvar="DUMP",
     default=False,
 )
+@click.option(
+    "--outfile",
+    help="File location to write instructions",
+    envvar="OUTFILE",
+    default="./instructions.json",
+)
 def delete_product(
-    network, rpc_endpoint, program_key, keys, commitment, mapping, product, dump
+    network,
+    rpc_endpoint,
+    program_key,
+    keys,
+    commitment,
+    mapping,
+    product,
+    dump,
+    outfile,
 ):
     program_admin = ProgramAdmin(
         network=network,
@@ -158,6 +188,7 @@ def delete_product(
             [instruction],
             [funding_keypair, mapping_keypair, product_keypair],
             dump_instructions=dump,
+            file_location=outfile,
         )
     )
 
