@@ -175,7 +175,7 @@ class ProgramAdmin:
                 for instruction in instructions:
                     instruction_output = {
                         "program_id": instruction.program_id,
-                        "data": instruction.data.decode(),
+                        "data": instruction.data.hex()
                     }
                     accounts = []
                     for account in instruction.keys:
