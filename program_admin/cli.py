@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import sys
 from pathlib import Path
@@ -78,54 +79,32 @@ def delete_price(
 
 
 @click.command()
-@click.option("--network", help="Solana network", envvar="NETWORK")
-@click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
+@click.option("--funding-key", help="Funding key", envvar="FUNDING_KEY")
 @click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
-@click.option("--keys", help="Path to keys directory", envvar="KEYS")
-@click.option(
-    "--commitment",
-    help="Confirmation level to use",
-    envvar="COMMITMENT",
-    default="finalized",
-)
-@click.option("--price", help="Public key of the price account")
-@click.option(
-    "--min-pub", help="Minimum publishers value to set for this price", type=int
-)
-@click.option(
-    "--dump",
-    help="Output instructions rather than transact",
-    envvar="DUMP",
-    default=False,
-)
-@click.option(
-    "--outfile",
-    help="File location to write instructions",
-    envvar="OUTFILE",
-    default="./instructions.json",
-)
-def set_minimum_publishers_for_price(
-    network, rpc_endpoint, program_key, keys, commitment, price, min_pub, dump, outfile
-):
-    program_admin = ProgramAdmin(
-        network=network,
-        rpc_endpoint=rpc_endpoint,
-        key_dir=keys,
-        program_key=program_key,
-        commitment=commitment,
-    )
-    funding_keypair = load_keypair("funding", key_dir=keys)
-    price_keypair = load_keypair(PublicKey(price), key_dir=keys)
-    instruction = instructions.set_minimum_publishers(
-        program_key, funding_keypair.public_key, price_keypair.public_key, min_pub
-    )
+@click.option("--price-key", help="Price account key", envvar="PRICE_KEY")
+@click.option("--value", help="New value for minimum publishers", type=int)
+def set_minimum_publishers(program_key, funding_key, price_key, value):
+    funding = PublicKey(funding_key)
+    program = PublicKey(program_key)
+    price = PublicKey(price_key)
+    instruction = instructions.set_minimum_publishers(program, funding, price, value)
 
-    asyncio.run(
-        program_admin.send_transaction(
-            [instruction],
-            [funding_keypair, price_keypair],
-            dump_instructions=dump,
-            file_location=outfile,
+    sys.stdout.write(
+        json.dumps(
+            [
+                {
+                    "program_id": str(program),
+                    "data": instruction.data.decode(),
+                    "accounts": [
+                        {
+                            "pubkey": str(account.pubkey),
+                            "is_signer": account.is_signer,
+                            "is_writable": account.is_writable,
+                        }
+                        for account in instruction.keys
+                    ],
+                }
+            ]
         )
     )
 
@@ -392,7 +371,7 @@ cli.add_command(delete_product)
 cli.add_command(list_accounts)
 cli.add_command(restore_links)
 cli.add_command(sync)
-cli.add_command(set_minimum_publishers_for_price)
+cli.add_command(set_minimum_publishers)
 
 
 logger.remove()
