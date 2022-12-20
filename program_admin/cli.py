@@ -94,7 +94,73 @@ def set_minimum_publishers(program_key, funding_key, price_key, value):
             [
                 {
                     "program_id": str(program),
-                    "data": instruction.data.decode(),
+                    "data": instruction.data.hex(),
+                    "accounts": [
+                        {
+                            "pubkey": str(account.pubkey),
+                            "is_signer": account.is_signer,
+                            "is_writable": account.is_writable,
+                        }
+                        for account in instruction.keys
+                    ],
+                }
+            ]
+        )
+    )
+
+
+@click.command()
+@click.option("--funding-key", help="Funding key", envvar="FUNDING_KEY")
+@click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
+@click.option("--product-key", help="Product account key", envvar="PRODUCT_KEY")
+@click.option("--metadata", help="Metadata to add to product", type=dict)
+def update_product_metadata(program_key, funding_key, product_key, metadata):
+    funding = PublicKey(funding_key)
+    program = PublicKey(program_key)
+    product = PublicKey(product_key)
+    instruction = instructions.update_product(program, funding, product, metadata)
+
+    sys.stdout.write(
+        json.dumps(
+            [
+                {
+                    "program_id": str(program),
+                    "data": instruction.data.hex(),
+                    "accounts": [
+                        {
+                            "pubkey": str(account.pubkey),
+                            "is_signer": account.is_signer,
+                            "is_writable": account.is_writable,
+                        }
+                        for account in instruction.keys
+                    ],
+                }
+            ]
+        )
+    )
+
+
+@click.command()
+@click.option("--funding-key", help="Funding key", envvar="FUNDING_KEY")
+@click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
+@click.option("--price-key", help="Price account key", envvar="PRICE_KEY")
+@click.option("--publisher-key", help="Publisher account key", envvar="PUBLISHER_KEY")
+@click.option("--status", help="Status of publisher", type=bool)
+def toggle_publisher(program_key, funding_key, price_key, publisher_key, status):
+    funding = PublicKey(funding_key)
+    program = PublicKey(program_key)
+    price = PublicKey(price_key)
+    publisher = PublicKey(publisher_key)
+    instruction = instructions.toggle_publisher(
+        program, funding, price, publisher, status
+    )
+
+    sys.stdout.write(
+        json.dumps(
+            [
+                {
+                    "program_id": str(program),
+                    "data": instruction.data.hex(),
                     "accounts": [
                         {
                             "pubkey": str(account.pubkey),
@@ -372,7 +438,7 @@ cli.add_command(list_accounts)
 cli.add_command(restore_links)
 cli.add_command(sync)
 cli.add_command(set_minimum_publishers)
-
-
+cli.add_command(toggle_publisher)
+cli.add_command(update_product_metadata)
 logger.remove()
 logger.add(sys.stdout, serialize=(not os.environ.get("DEV_MODE")))
