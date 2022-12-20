@@ -83,30 +83,39 @@ def delete_price(
 @click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
 @click.option("--price-key", help="Price account key", envvar="PRICE_KEY")
 @click.option("--value", help="New value for minimum publishers", type=int)
-def set_minimum_publishers(program_key, funding_key, price_key, value):
+@click.option(
+    "--outfile",
+    help="File location to write instructions",
+    envvar="OUTFILE",
+    default=None,
+)
+def set_minimum_publishers(program_key, funding_key, price_key, value, outfile):
     funding = PublicKey(funding_key)
     program = PublicKey(program_key)
     price = PublicKey(price_key)
     instruction = instructions.set_minimum_publishers(program, funding, price, value)
 
-    sys.stdout.write(
-        json.dumps(
-            [
-                {
-                    "program_id": str(program),
-                    "data": instruction.data.hex(),
-                    "accounts": [
-                        {
-                            "pubkey": str(account.pubkey),
-                            "is_signer": account.is_signer,
-                            "is_writable": account.is_writable,
-                        }
-                        for account in instruction.keys
-                    ],
-                }
-            ]
-        )
+    instruction_output = json.dumps(
+        [
+            {
+                "program_id": str(program),
+                "data": instruction.data.hex(),
+                "accounts": [
+                    {
+                        "pubkey": str(account.pubkey),
+                        "is_signer": account.is_signer,
+                        "is_writable": account.is_writable,
+                    }
+                    for account in instruction.keys
+                ],
+            }
+        ]
     )
+
+    sys.stdout.write(instruction_output)
+    if outfile:
+        with open(outfile, "w", encoding="utf-8") as output_file:
+            output_file.write(instruction_output)
 
 
 @click.command()
@@ -114,30 +123,39 @@ def set_minimum_publishers(program_key, funding_key, price_key, value):
 @click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
 @click.option("--product-key", help="Product account key", envvar="PRODUCT_KEY")
 @click.option("--metadata", help="Metadata to add to product", type=dict)
-def update_product_metadata(program_key, funding_key, product_key, metadata):
+@click.option(
+    "--outfile",
+    help="File location to write instructions",
+    envvar="OUTFILE",
+    default=None,
+)
+def update_product_metadata(program_key, funding_key, product_key, metadata, outfile):
     funding = PublicKey(funding_key)
     program = PublicKey(program_key)
     product = PublicKey(product_key)
     instruction = instructions.update_product(program, funding, product, metadata)
 
-    sys.stdout.write(
-        json.dumps(
-            [
-                {
-                    "program_id": str(program),
-                    "data": instruction.data.hex(),
-                    "accounts": [
-                        {
-                            "pubkey": str(account.pubkey),
-                            "is_signer": account.is_signer,
-                            "is_writable": account.is_writable,
-                        }
-                        for account in instruction.keys
-                    ],
-                }
-            ]
-        )
+    instruction_output = json.dumps(
+        [
+            {
+                "program_id": str(program),
+                "data": instruction.data.hex(),
+                "accounts": [
+                    {
+                        "pubkey": str(account.pubkey),
+                        "is_signer": account.is_signer,
+                        "is_writable": account.is_writable,
+                    }
+                    for account in instruction.keys
+                ],
+            }
+        ]
     )
+
+    sys.stdout.write(instruction_output)
+    if outfile:
+        with open(outfile, "w", encoding="utf-8") as output_file:
+            output_file.write(instruction_output)
 
 
 @click.command()
@@ -146,7 +164,15 @@ def update_product_metadata(program_key, funding_key, product_key, metadata):
 @click.option("--price-key", help="Price account key", envvar="PRICE_KEY")
 @click.option("--publisher-key", help="Publisher account key", envvar="PUBLISHER_KEY")
 @click.option("--status", help="Status of publisher", type=bool)
-def toggle_publisher(program_key, funding_key, price_key, publisher_key, status):
+@click.option(
+    "--outfile",
+    help="File location to write instructions",
+    envvar="OUTFILE",
+    default=None,
+)
+def toggle_publisher(
+    program_key, funding_key, price_key, publisher_key, status, outfile
+):
     funding = PublicKey(funding_key)
     program = PublicKey(program_key)
     price = PublicKey(price_key)
@@ -155,24 +181,27 @@ def toggle_publisher(program_key, funding_key, price_key, publisher_key, status)
         program, funding, price, publisher, status
     )
 
-    sys.stdout.write(
-        json.dumps(
-            [
-                {
-                    "program_id": str(program),
-                    "data": instruction.data.hex(),
-                    "accounts": [
-                        {
-                            "pubkey": str(account.pubkey),
-                            "is_signer": account.is_signer,
-                            "is_writable": account.is_writable,
-                        }
-                        for account in instruction.keys
-                    ],
-                }
-            ]
-        )
+    instruction_output = json.dumps(
+        [
+            {
+                "program_id": str(program),
+                "data": instruction.data.hex(),
+                "accounts": [
+                    {
+                        "pubkey": str(account.pubkey),
+                        "is_signer": account.is_signer,
+                        "is_writable": account.is_writable,
+                    }
+                    for account in instruction.keys
+                ],
+            }
+        ]
     )
+
+    sys.stdout.write(instruction_output)
+    if outfile:
+        with open(outfile, "w", encoding="utf-8") as output_file:
+            output_file.write(instruction_output)
 
 
 @click.command()
