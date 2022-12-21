@@ -3,10 +3,10 @@ import os
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, List, Literal, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
-from loguru import logger
 import pytest
+from loguru import logger
 from solana import system_program
 from solana.keypair import Keypair
 from solana.publickey import PublicKey
@@ -38,6 +38,7 @@ from program_admin.util import (
     PRICE_ACCOUNT_SIZE,
     PRODUCT_ACCOUNT_SIZE,
     compute_transaction_size,
+    get_actual_signers,
     recent_blockhash,
     sort_mapping_account_keys,
 )
@@ -157,20 +158,6 @@ class ProgramAdmin:
         signers: List[Keypair],
         dump_instructions: bool = False,
     ):
-        def get_actual_signers(signers : List[Keypair], transaction : Transaction) -> List[Keypair]:
-            """
-            Given a list of keypairs and a transaction, returns the keypairs that actually need to sign the transaction,
-            i.e. those whose pubkey appears in the instruction accounts.
-            """
-
-            actual_signers = []
-            for signer in signers :
-                instruction_has_signer = [any(signer.public_key == account.pubkey and account.is_signer for account in instruction.keys) for instruction in transaction.instructions ] 
-                if any(instruction_has_signer):
-                    actual_signers.append(signer)
-            
-            return actual_signers
-
         if not instructions:
             return
 
@@ -178,17 +165,18 @@ class ProgramAdmin:
             logger.debug(f"Sending {len(instructions)} instructions")
 
             blockhash = await recent_blockhash(client)
-            transaction = Transaction(recent_blockhash=blockhash, fee_payer= signers[0].public_key)
+            transaction = Transaction(
+                recent_blockhash=blockhash, fee_payer=signers[0].public_key
+            )
             transaction.add(instructions[0])
             transaction.sign(*get_actual_signers(signers, transaction))
-
 
             ix_index = 1
 
             if dump_instructions:
                 dump_output = []
                 for instruction in instructions:
-                    instruction_output = {
+                    instruction_output: Dict[str, Any] = {
                         "program_id": str(instruction.program_id),
                         "data": instruction.data.hex(),
                     }
@@ -362,7 +350,7 @@ class ProgramAdmin:
         instructions: List[TransactionInstruction] = []
         funding_keypair = load_keypair("funding", key_dir=self.key_dir)
         mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
-        
+
         mapping_keypair = load_keypair(mapping_chain[-1], key_dir=self.key_dir)
         product_keypair = load_keypair(
             f"product_{product['jump_symbol']}",

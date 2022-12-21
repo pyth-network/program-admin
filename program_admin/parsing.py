@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Dict, List, Optional, cast
 
 import ujson as json
 from construct import Int8ul, Int32sl, Int32ul, Int64sl, Int64ul
