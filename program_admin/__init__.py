@@ -156,6 +156,27 @@ class ProgramAdmin:
         signers: List[Keypair],
         dump_instructions: bool = False,
     ):
+        def get_actual_signers(
+            signers: List[Keypair], transaction: Transaction
+        ) -> List[Keypair]:
+            """
+            Given a list of keypairs and a transaction, returns the keypairs that actually need to sign the transaction,
+            i.e. those whose pubkey appears in the instruction accounts.
+            """
+            actual_signers = []
+            for signer in signers:
+                instruction_has_signer = [
+                    any(
+                        signer.public_key == account.pubkey and account.is_signer
+                        for account in instruction.keys
+                    )
+                    for instruction in transaction.instructions
+                ]
+                if any(instruction_has_signer):
+                    actual_signers.append(signer)
+
+            return actual_signers
+
         if not instructions:
             return
 
@@ -166,7 +187,7 @@ class ProgramAdmin:
             transaction = Transaction(recent_blockhash=blockhash)
 
             transaction.add(instructions[0])
-            transaction.sign(*signers)
+            transaction.sign(*get_actual_signers(signers, transaction))
 
             ix_index = 1
 
@@ -207,7 +228,7 @@ class ProgramAdmin:
                 and instructions[ix_index:]
             ):
                 transaction.add(instructions[ix_index])
-                transaction.sign(*signers)
+                transaction.sign(*get_actual_signers(signers, transaction))
                 ix_index += 1
 
             if not dump_instructions:
