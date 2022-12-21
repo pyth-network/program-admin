@@ -37,6 +37,7 @@ from program_admin.util import (
     PRICE_ACCOUNT_SIZE,
     PRODUCT_ACCOUNT_SIZE,
     compute_transaction_size,
+    get_actual_signers,
     recent_blockhash,
     sort_mapping_account_keys,
 )
@@ -156,27 +157,6 @@ class ProgramAdmin:
         signers: List[Keypair],
         dump_instructions: bool = False,
     ):
-        def get_actual_signers(
-            signers: List[Keypair], transaction: Transaction
-        ) -> List[Keypair]:
-            """
-            Given a list of keypairs and a transaction, returns the keypairs that actually need to sign the transaction,
-            i.e. those whose pubkey appears in at least one of the instructions as a signer.
-            """
-            actual_signers = []
-            for signer in signers:
-                instruction_has_signer = [
-                    any(
-                        signer.public_key == account.pubkey and account.is_signer
-                        for account in instruction.keys
-                    )
-                    for instruction in transaction.instructions
-                ]
-                if any(instruction_has_signer):
-                    actual_signers.append(signer)
-
-            return actual_signers
-
         if not instructions:
             return
 
