@@ -4,8 +4,7 @@ from solana.blockhash import Blockhash
 from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Commitment
-from solana.transaction import SIG_LENGTH, Transaction
-from solana.utils import shortvec_encoding as shortvec
+from solana.transaction import Transaction
 
 from program_admin.types import (
     Network,
@@ -35,23 +34,9 @@ async def recent_blockhash(client: AsyncClient) -> Blockhash:
 def compute_transaction_size(transaction: Transaction) -> int:
     """
     Returns the total over-the-wire size of a transaction
-
-    This is the same code from solana.transaction.Transaction.__serialize()
     """
-    payload = bytearray()
-    signature_count = shortvec.encode_length(len(transaction.signatures))
 
-    payload.extend(signature_count)
-
-    for sig_pair in transaction.signatures:
-        if sig_pair.signature:
-            payload.extend(sig_pair.signature)
-        else:
-            payload.extend(bytearray(SIG_LENGTH))
-
-    payload.extend(transaction.serialize_message())
-
-    return len(payload)
+    return len(transaction.serialize())
 
 
 def encode_product_metadata(data: Dict[str, str]) -> bytes:
