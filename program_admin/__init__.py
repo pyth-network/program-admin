@@ -166,7 +166,7 @@ class ProgramAdmin:
             blockhash = await recent_blockhash(client)
             transaction = Transaction(
                 recent_blockhash=blockhash, fee_payer=signers[0].public_key
-            )
+            )  # The fee payer is the first signer
             transaction.add(instructions[0])
             transaction.sign(*get_actual_signers(signers, transaction))
 
