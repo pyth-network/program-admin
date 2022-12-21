@@ -3,7 +3,7 @@ import os
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, List, Literal, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
 from loguru import logger
 from solana import system_program
@@ -173,8 +173,8 @@ class ProgramAdmin:
             if dump_instructions:
                 dump_output = []
                 for instruction in instructions:
-                    instruction_output = {
-                        "program_id": instruction.program_id,
+                    instruction_output: Dict[str, Any] = {
+                        "program_id": str(instruction.program_id),
                         "data": instruction.data.hex(),
                     }
                     accounts = []
