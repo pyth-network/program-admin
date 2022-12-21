@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 import ujson as json
 from construct import Int8ul, Int32sl, Int32ul, Int64sl, Int64ul
@@ -181,9 +181,9 @@ def parse_account(response: RpcKeyedAccount) -> Optional[PythAccount]:
     if not account_data:
         return None
 
-    account_args = {
-        "public_key": PublicKey.from_solders(response.pubkey),
-        "owner": PublicKey.from_solders(response.account.owner),
+    account_args: Dict[str, Any] = {
+        "public_key": PublicKey(response.pubkey),
+        "owner": PublicKey(response.account.owner),
         "lamports": response.account.lamports,
         "data": account_data,
     }
