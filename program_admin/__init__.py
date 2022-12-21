@@ -161,7 +161,7 @@ class ProgramAdmin:
         ) -> List[Keypair]:
             """
             Given a list of keypairs and a transaction, returns the keypairs that actually need to sign the transaction,
-            i.e. those whose pubkey appears in the instruction accounts.
+            i.e. those whose pubkey appears in at least one of the instructions as a signer.
             """
             actual_signers = []
             for signer in signers:
