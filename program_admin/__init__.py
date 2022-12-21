@@ -3,9 +3,10 @@ import os
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Tuple
+from typing import Dict, List, Literal, Tuple
 
 from loguru import logger
+import pytest
 from solana import system_program
 from solana.keypair import Keypair
 from solana.publickey import PublicKey
@@ -37,7 +38,6 @@ from program_admin.util import (
     PRICE_ACCOUNT_SIZE,
     PRODUCT_ACCOUNT_SIZE,
     compute_transaction_size,
-    get_actual_signers,
     recent_blockhash,
     sort_mapping_account_keys,
 )
@@ -97,7 +97,7 @@ class ProgramAdmin:
         Return the minimum balance in lamports for a new account to be rent-exempt.
         """
         async with AsyncClient(self.rpc_endpoint) as client:
-            return (await client.get_minimum_balance_for_rent_exemption(size))["result"]
+            return (await client.get_minimum_balance_for_rent_exemption(size)).value
 
     async def refresh_program_accounts(self):
         async with AsyncClient(self.rpc_endpoint) as client:
@@ -108,7 +108,7 @@ class ProgramAdmin:
                     encoding="base64",
                     commitment=self.commitment,
                 )
-            )["result"]
+            ).value
 
             reference_pairs = {
                 (
@@ -157,6 +157,20 @@ class ProgramAdmin:
         signers: List[Keypair],
         dump_instructions: bool = False,
     ):
+        def get_actual_signers(signers : List[Keypair], transaction : Transaction) -> List[Keypair]:
+            """
+            Given a list of keypairs and a transaction, returns the keypairs that actually need to sign the transaction,
+            i.e. those whose pubkey appears in the instruction accounts.
+            """
+
+            actual_signers = []
+            for signer in signers :
+                instruction_has_signer = [any(signer.public_key == account.pubkey and account.is_signer for account in instruction.keys) for instruction in transaction.instructions ] 
+                if any(instruction_has_signer):
+                    actual_signers.append(signer)
+            
+            return actual_signers
+
         if not instructions:
             return
 
@@ -164,17 +178,17 @@ class ProgramAdmin:
             logger.debug(f"Sending {len(instructions)} instructions")
 
             blockhash = await recent_blockhash(client)
-            transaction = Transaction(recent_blockhash=blockhash)
-
+            transaction = Transaction(recent_blockhash=blockhash, fee_payer= signers[0].public_key)
             transaction.add(instructions[0])
             transaction.sign(*get_actual_signers(signers, transaction))
+
 
             ix_index = 1
 
             if dump_instructions:
                 dump_output = []
                 for instruction in instructions:
-                    instruction_output: Dict[str, Any] = {
+                    instruction_output = {
                         "program_id": str(instruction.program_id),
                         "data": instruction.data.hex(),
                     }
@@ -218,7 +232,7 @@ class ProgramAdmin:
                         skip_confirmation=False, preflight_commitment=self.commitment
                     ),
                 )
-                logger.debug(f"Transaction: {response['result']}")
+                logger.debug(f"Transaction: {response.value}")
 
             logger.debug(f"Sent {ix_index} instructions")
 
@@ -348,6 +362,7 @@ class ProgramAdmin:
         instructions: List[TransactionInstruction] = []
         funding_keypair = load_keypair("funding", key_dir=self.key_dir)
         mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
+        
         mapping_keypair = load_keypair(mapping_chain[-1], key_dir=self.key_dir)
         product_keypair = load_keypair(
             f"product_{product['jump_symbol']}",

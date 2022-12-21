@@ -22,14 +22,14 @@ SOL_LAMPORTS = pow(10, 9)
 
 
 async def recent_blockhash(client: AsyncClient) -> Blockhash:
-    blockhash_response = await client.get_recent_blockhash(
+    blockhash_response = await client.get_latest_blockhash(
         commitment=Commitment("finalized")
     )
 
-    if not "result" in blockhash_response:
+    if not blockhash_response.value:
         raise RuntimeError("Failed to get recent blockhash")
 
-    return Blockhash(blockhash_response["result"]["value"]["blockhash"])
+    return Blockhash(str(blockhash_response.value.blockhash))
 
 
 def compute_transaction_size(transaction: Transaction) -> int:

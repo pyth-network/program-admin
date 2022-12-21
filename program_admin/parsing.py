@@ -1,10 +1,10 @@
-from base64 import b64decode
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
 import ujson as json
 from construct import Int8ul, Int32sl, Int32ul, Int64sl, Int64ul
 from solana.publickey import PublicKey
+from solders.rpc.responses import RpcKeyedAccount
 
 from program_admin.types import (
     AccountData,
@@ -175,16 +175,16 @@ def parse_data(data: bytes) -> Optional[AccountData]:
     raise RuntimeError(f"Invalid account type: {data_type}")
 
 
-def parse_account(response: Dict[str, Any]) -> Optional[PythAccount]:
-    account_data = parse_data(b64decode(response["account"]["data"][0]))
+def parse_account(response: RpcKeyedAccount) -> Optional[PythAccount]:
+    account_data = parse_data(response.account.data)
 
     if not account_data:
         return None
 
     account_args = {
-        "public_key": PublicKey(response["pubkey"]),
-        "owner": PublicKey(response["account"]["owner"]),
-        "lamports": response["account"]["lamports"],
+        "public_key": PublicKey.from_solders(response.pubkey),
+        "owner": PublicKey.from_solders(response.account.owner),
+        "lamports": response.account.lamports,
         "data": account_data,
     }
 
