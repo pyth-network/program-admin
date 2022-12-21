@@ -97,7 +97,7 @@ class ProgramAdmin:
         Return the minimum balance in lamports for a new account to be rent-exempt.
         """
         async with AsyncClient(self.rpc_endpoint) as client:
-            return (await client.get_minimum_balance_for_rent_exemption(size))["result"]
+            return (await client.get_minimum_balance_for_rent_exemption(size)).value
 
     async def refresh_program_accounts(self):
         async with AsyncClient(self.rpc_endpoint) as client:
@@ -108,7 +108,7 @@ class ProgramAdmin:
                     encoding="base64",
                     commitment=self.commitment,
                 )
-            )["result"]
+            ).value
 
             reference_pairs = {
                 (
@@ -164,8 +164,9 @@ class ProgramAdmin:
             logger.debug(f"Sending {len(instructions)} instructions")
 
             blockhash = await recent_blockhash(client)
-            transaction = Transaction(recent_blockhash=blockhash)
-
+            transaction = Transaction(
+                recent_blockhash=blockhash, fee_payer=signers[0].public_key
+            )  # The fee payer is the first signer
             transaction.add(instructions[0])
             transaction.sign(*get_actual_signers(signers, transaction))
 
@@ -218,7 +219,7 @@ class ProgramAdmin:
                         skip_confirmation=False, preflight_commitment=self.commitment
                     ),
                 )
-                logger.debug(f"Transaction: {response['result']}")
+                logger.debug(f"Transaction: {response.value}")
 
             logger.debug(f"Sent {ix_index} instructions")
 
