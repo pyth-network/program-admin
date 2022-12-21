@@ -37,6 +37,7 @@ from program_admin.util import (
     PRICE_ACCOUNT_SIZE,
     PRODUCT_ACCOUNT_SIZE,
     compute_transaction_size,
+    get_actual_signers,
     recent_blockhash,
     sort_mapping_account_keys,
 )
@@ -166,7 +167,7 @@ class ProgramAdmin:
             transaction = Transaction(recent_blockhash=blockhash)
 
             transaction.add(instructions[0])
-            transaction.sign(*signers)
+            transaction.sign(*get_actual_signers(signers, transaction))
 
             ix_index = 1
 
@@ -207,7 +208,7 @@ class ProgramAdmin:
                 and instructions[ix_index:]
             ):
                 transaction.add(instructions[ix_index])
-                transaction.sign(*signers)
+                transaction.sign(*get_actual_signers(signers, transaction))
                 ix_index += 1
 
             if not dump_instructions:
