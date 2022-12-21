@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, cast
 import ujson as json
 from construct import Int8ul, Int32sl, Int32ul, Int64sl, Int64ul
 from solana.publickey import PublicKey
-from solders.rpc.responses import RpcKeyedAccount
+from solders.rpc.responses import RpcKeyedAccount  # pylint: disable=import-error
 
 from program_admin.types import (
     AccountData,
