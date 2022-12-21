@@ -104,7 +104,10 @@ def set_minimum_publishers_for_price(
     funding_keypair = load_keypair("funding", key_dir=keys)
     price_keypair = load_keypair(PublicKey(price), key_dir=keys)
     instruction = instructions.set_minimum_publishers(
-        program_key, funding_keypair.public_key, price_keypair.public_key, min_pub
+        program_admin.program_key,
+        funding_keypair.public_key,
+        price_keypair.public_key,
+        min_pub,
     )
 
     asyncio.run(
