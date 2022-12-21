@@ -1,3 +1,5 @@
+import json
+
 from click.testing import CliRunner
 
 from program_admin import cli
@@ -19,7 +21,13 @@ def test_minimum_publishers():
         ],
     )
     assert result.exit_code == 0
-    assert "3LCB76EyhJF47g5Vq2jYgDMiAuUNyUbysyMavhVNABEg" in result.output
+    assert (
+        result.output
+        == '[{"program_id": "3LCB76Eyh4F47g5Vq2jYgDMiAuUNyUbysyMavhVNABEa", "data": "020000000c00000014000000", "accounts": [{"pubkey": "3LCB76EyhJF47g5Vq2jYgDMiAuUNyUbysyMavhVNABEg", "is_signer": true, "is_writable": true}, {"pubkey": "6bRsDGmuSfUCND9vZioUbWfB56dkrCqNE8f2DW7eNU5D", "is_signer": true, "is_writable": true}]}]'
+    )
+    json_data = json.loads(result.output)
+    for key in ["program_id", "data", "accounts"]:
+        assert key in json_data[0].keys()
 
 
 def test_toggle_publisher():
@@ -39,8 +47,15 @@ def test_toggle_publisher():
             True,
         ],
     )
+
     assert result.exit_code == 0
-    assert "3LCB76EyhJF47g5Vq2jYgDMiAuUNyUbysyMavhVNABEg" in result.output
+    assert (
+        result.output
+        == '[{"program_id": "3LCB76Eyh4F47g5Vq2jYgDMiAuUNyUbysyMavhVNABEa", "data": "0200000005000000531c4c42ec1c272ea2a88f736f9ae65152763e92583ebbc0d634777bdf3a5259", "accounts": [{"pubkey": "3LCB76EyhJF47g5Vq2jYgDMiAuUNyUbysyMavhVNABEg", "is_signer": true, "is_writable": true}, {"pubkey": "6bRsDGmuSfUCND9vZioUbWfB56dkrCqNE8f2DW7eNU5D", "is_signer": true, "is_writable": true}]}]'
+    )
+    json_data = json.loads(result.output)
+    for key in ["program_id", "data", "accounts"]:
+        assert key in json_data[0].keys()
 
 
 def test_update_product():
@@ -59,4 +74,11 @@ def test_update_product():
         ],
     )
     assert result.exit_code == 0
-    assert "3LCB76EyhJF47g5Vq2jYgDMiAuUNyUbysyMavhVNABEg" in result.output
+    assert (
+        result.output
+        == '[{"program_id": "3LCB76Eyh4F47g5Vq2jYgDMiAuUNyUbysyMavhVNABEa", "data": "02000000030000000464617461046d657461", "accounts": [{"pubkey": "3LCB76EyhJF47g5Vq2jYgDMiAuUNyUbysyMavhVNABEg", "is_signer": true, "is_writable": true}, {"pubkey": "6bRsDGmuSfUCND9vZioUbWfB56dkrCqNE8f2DW7eNU5D", "is_signer": true, "is_writable": true}]}]'
+    )
+
+    json_data = json.loads(result.output)
+    for key in ["program_id", "data", "accounts"]:
+        assert key in json_data[0].keys()

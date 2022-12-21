@@ -48,9 +48,7 @@ def cli():
     envvar="OUTFILE",
     default="./instructions.json",
 )
-def delete_price(
-    network, rpc_endpoint, program_key, keys, commitment, product, price, dump, outfile
-):
+def delete_price(network, rpc_endpoint, program_key, keys, commitment, product, price):
     program_admin = ProgramAdmin(
         network=network,
         rpc_endpoint=rpc_endpoint,
@@ -70,10 +68,7 @@ def delete_price(
 
     asyncio.run(
         program_admin.send_transaction(
-            [instruction],
-            [funding_keypair, product_keypair, price_keypair],
-            dump_instructions=dump,
-            file_location=outfile,
+            [instruction], [funding_keypair, product_keypair, price_keypair]
         )
     )
 
@@ -89,7 +84,7 @@ def delete_price(
     envvar="OUTFILE",
     default=None,
 )
-def set_minimum_publishers(program_key, funding_key, price_key, value, outfile):
+def set_minimum_publishers(funding_key, program_key, price_key, value, outfile):
     funding = PublicKey(funding_key)
     program = PublicKey(program_key)
     price = PublicKey(price_key)
@@ -129,7 +124,7 @@ def set_minimum_publishers(program_key, funding_key, price_key, value, outfile):
     envvar="OUTFILE",
     default=None,
 )
-def update_product_metadata(program_key, funding_key, product_key, metadata, outfile):
+def update_product_metadata(funding_key, program_key, product_key, metadata, outfile):
     funding = PublicKey(funding_key)
     program = PublicKey(program_key)
     product = PublicKey(product_key)
@@ -171,7 +166,7 @@ def update_product_metadata(program_key, funding_key, product_key, metadata, out
     default=None,
 )
 def toggle_publisher(
-    program_key, funding_key, price_key, publisher_key, status, outfile
+    funding_key, program_key, price_key, publisher_key, status, outfile
 ):
     funding = PublicKey(funding_key)
     program = PublicKey(program_key)
@@ -230,15 +225,7 @@ def toggle_publisher(
     default="./instructions.json",
 )
 def delete_product(
-    network,
-    rpc_endpoint,
-    program_key,
-    keys,
-    commitment,
-    mapping,
-    product,
-    dump,
-    outfile,
+    network, rpc_endpoint, program_key, keys, commitment, mapping, product
 ):
     program_admin = ProgramAdmin(
         network=network,
@@ -259,10 +246,7 @@ def delete_product(
 
     asyncio.run(
         program_admin.send_transaction(
-            [instruction],
-            [funding_keypair, mapping_keypair, product_keypair],
-            dump_instructions=dump,
-            file_location=outfile,
+            [instruction], [funding_keypair, mapping_keypair, product_keypair]
         )
     )
 

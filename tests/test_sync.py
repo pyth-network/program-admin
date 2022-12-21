@@ -168,12 +168,6 @@ def localhost_overrides_json():
 
 
 @pytest.fixture
-def instruction_output_file():
-    with NamedTemporaryFile() as jsonfile:
-        yield jsonfile.name
-
-
-@pytest.fixture
 async def validator():
     process = await asyncio.create_subprocess_shell(
         "solana-test-validator",
@@ -304,7 +298,6 @@ async def test_sync(
     permissions2_json,
     empty_overrides_json,
     localhost_overrides_json,
-    instruction_output_file,
 ):
     network = "localhost"
     program_admin = ProgramAdmin(
@@ -388,15 +381,6 @@ async def test_sync(
     min_pub_instruction = instructions.set_minimum_publishers(
         pyth_program, funding_key.public_key, price_keypair.public_key, 10
     )
-
-    # Test instruction print output
-    instruction_output = await program_admin.send_transaction(
-        [min_pub_instruction],
-        [funding_key, price_keypair],
-        dump_instructions=True,
-        file_location=instruction_output_file,
-    )
-    assert isinstance(instruction_output, list)
 
     await program_admin.send_transaction(
         [min_pub_instruction], [funding_key, price_keypair]
