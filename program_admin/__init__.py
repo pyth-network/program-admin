@@ -5,7 +5,6 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Tuple
 
-import pytest
 from loguru import logger
 from solana import system_program
 from solana.keypair import Keypair
@@ -350,7 +349,6 @@ class ProgramAdmin:
         instructions: List[TransactionInstruction] = []
         funding_keypair = load_keypair("funding", key_dir=self.key_dir)
         mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
-
         mapping_keypair = load_keypair(mapping_chain[-1], key_dir=self.key_dir)
         product_keypair = load_keypair(
             f"product_{product['jump_symbol']}",
