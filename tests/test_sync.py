@@ -379,7 +379,7 @@ async def test_sync(
         product_accounts[0].data.first_price_account_key, key_dir=key_dir
     )
     min_pub_instruction = instructions.set_minimum_publishers(
-        pyth_program, funding_key.public_key, price_keypair.public_key, 10
+        program_admin.program_key, funding_key.public_key, price_keypair.public_key, 10
     )
 
     await program_admin.send_transaction(

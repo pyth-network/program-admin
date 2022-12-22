@@ -1,11 +1,11 @@
 from typing import Dict, List
 
 from solana.blockhash import Blockhash
+from solana.keypair import Keypair
 from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Commitment
-from solana.transaction import SIG_LENGTH, Transaction
-from solana.utils import shortvec_encoding as shortvec
+from solana.transaction import Transaction
 
 from program_admin.types import (
     Network,
@@ -22,36 +22,22 @@ SOL_LAMPORTS = pow(10, 9)
 
 
 async def recent_blockhash(client: AsyncClient) -> Blockhash:
-    blockhash_response = await client.get_recent_blockhash(
+    blockhash_response = await client.get_latest_blockhash(
         commitment=Commitment("finalized")
     )
 
-    if not "result" in blockhash_response:
+    if not blockhash_response.value:
         raise RuntimeError("Failed to get recent blockhash")
 
-    return Blockhash(blockhash_response["result"]["value"]["blockhash"])
+    return Blockhash(str(blockhash_response.value.blockhash))
 
 
 def compute_transaction_size(transaction: Transaction) -> int:
     """
     Returns the total over-the-wire size of a transaction
-
-    This is the same code from solana.transaction.Transaction.__serialize()
     """
-    payload = bytearray()
-    signature_count = shortvec.encode_length(len(transaction.signatures))
 
-    payload.extend(signature_count)
-
-    for sig_pair in transaction.signatures:
-        if sig_pair.signature:
-            payload.extend(sig_pair.signature)
-        else:
-            payload.extend(bytearray(SIG_LENGTH))
-
-    payload.extend(transaction.serialize_message())
-
-    return len(payload)
+    return len(transaction.serialize())
 
 
 def encode_product_metadata(data: Dict[str, str]) -> bytes:
@@ -122,3 +108,25 @@ def apply_overrides(
         else:
             overridden_permissions[key] = value
     return overridden_permissions
+
+
+def get_actual_signers(
+    signers: List[Keypair], transaction: Transaction
+) -> List[Keypair]:
+    """
+    Given a list of keypairs and a transaction, returns the keypairs that actually need to sign the transaction,
+    i.e. those whose pubkey appears in at least one of the instructions as a signer.
+    """
+    actual_signers = []
+    for signer in signers:
+        instruction_has_signer = [
+            any(
+                signer.public_key == account.pubkey and account.is_signer
+                for account in instruction.keys
+            )
+            for instruction in transaction.instructions
+        ]
+        if any(instruction_has_signer):
+            actual_signers.append(signer)
+
+    return actual_signers

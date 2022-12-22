@@ -3,7 +3,7 @@ import os
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, List, Literal, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
 from loguru import logger
 from solana import system_program
@@ -37,6 +37,7 @@ from program_admin.util import (
     PRICE_ACCOUNT_SIZE,
     PRODUCT_ACCOUNT_SIZE,
     compute_transaction_size,
+    get_actual_signers,
     recent_blockhash,
     sort_mapping_account_keys,
 )
@@ -96,7 +97,7 @@ class ProgramAdmin:
         Return the minimum balance in lamports for a new account to be rent-exempt.
         """
         async with AsyncClient(self.rpc_endpoint) as client:
-            return (await client.get_minimum_balance_for_rent_exemption(size))["result"]
+            return (await client.get_minimum_balance_for_rent_exemption(size)).value
 
     async def refresh_program_accounts(self):
         async with AsyncClient(self.rpc_endpoint) as client:
@@ -107,7 +108,7 @@ class ProgramAdmin:
                     encoding="base64",
                     commitment=self.commitment,
                 )
-            )["result"]
+            ).value
 
             reference_pairs = {
                 (
@@ -160,10 +161,11 @@ class ProgramAdmin:
             logger.debug(f"Sending {len(instructions)} instructions")
 
             blockhash = await recent_blockhash(client)
-            transaction = Transaction(recent_blockhash=blockhash)
-
+            transaction = Transaction(
+                recent_blockhash=blockhash, fee_payer=signers[0].public_key
+            )  # The fee payer is the first signer
             transaction.add(instructions[0])
-            transaction.sign(*signers)
+            transaction.sign(*get_actual_signers(signers, transaction))
 
             ix_index = 1
 
@@ -185,7 +187,7 @@ class ProgramAdmin:
                 and instructions[ix_index:]
             ):
                 transaction.add(instructions[ix_index])
-                transaction.sign(*signers)
+                transaction.sign(*get_actual_signers(signers, transaction))
                 ix_index += 1
 
             response = await client.send_raw_transaction(
@@ -195,7 +197,6 @@ class ProgramAdmin:
                 ),
             )
             logger.debug(f"Transaction: {response['result']}")
-
             logger.debug(f"Sent {ix_index} instructions")
 
             remaining_instructions = instructions[ix_index:]
