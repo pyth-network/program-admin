@@ -196,7 +196,7 @@ class ProgramAdmin:
                     skip_confirmation=False, preflight_commitment=self.commitment
                 ),
             )
-            logger.debug(f"Transaction: {response['result']}")
+            logger.debug(f"Transaction: {response.value}")
             logger.debug(f"Sent {ix_index} instructions")
 
             remaining_instructions = instructions[ix_index:]
