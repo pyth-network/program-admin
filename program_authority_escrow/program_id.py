@@ -1,4 +1,4 @@
 from solana.publickey import PublicKey
 
-PROGRAM_ID = PublicKey("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS")
+PROGRAM_ID = PublicKey("escMHe7kSqPcDHx4HU44rAHhgdTLBZkUrU39aN8kMcL")
 BPF_UPGRADABLE_LOADER = PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")

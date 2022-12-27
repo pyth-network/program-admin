@@ -21,7 +21,7 @@ def accept(
 ) -> TransactionInstruction:
     escrow_authority = PublicKey.find_program_address(
         [bytes(accounts["current_authority"]), bytes(accounts["new_authority"])],
-        accounts["program_account"],
+        PROGRAM_ID,
     )[0]
     program_data = PublicKey.find_program_address(
         [bytes(accounts["program_account"])], BPF_UPGRADABLE_LOADER
