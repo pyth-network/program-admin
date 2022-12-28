@@ -42,7 +42,7 @@ def accept(
     ]
     if remaining_accounts is not None:
         keys += remaining_accounts
-    identifier = b"A\x96F\xd8\x85\x06k\x04"
+    identifier = b"A\x96F\xd8\x85\x06k\x04"  # Anchor discriminator (a hash of the name of the instruction)
     encoded_args = b""
     data = identifier + encoded_args
     return TransactionInstruction(keys, program_id, data)

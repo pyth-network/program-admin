@@ -45,7 +45,7 @@ def propose(
     ]
     if remaining_accounts is not None:
         keys += remaining_accounts
-    identifier = b"]\xfdR\xa8v!fZ"
+    identifier = b"]\xfdR\xa8v!fZ"  # Anchor discriminator (a hash of the name of the instruction)
     encoded_args = b""
     data = identifier + encoded_args
     return TransactionInstruction(keys, program_id, data)

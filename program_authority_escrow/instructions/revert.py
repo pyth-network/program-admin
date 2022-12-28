@@ -42,7 +42,7 @@ def revert(
     ]
     if remaining_accounts is not None:
         keys += remaining_accounts
-    identifier = b'"?hV\x05y\x82B'
+    identifier = b'"?hV\x05y\x82B'  # Anchor discriminator (a hash of the name of the instruction)
     encoded_args = b""
     data = identifier + encoded_args
     return TransactionInstruction(keys, program_id, data)
