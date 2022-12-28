@@ -8,6 +8,8 @@ import click
 from loguru import logger
 from solana.publickey import PublicKey
 
+from program_authority_escrow.instructions import propose
+
 from program_admin import ProgramAdmin, instructions
 from program_admin.keys import load_keypair, restore_symlink
 from program_admin.parsing import (
@@ -359,12 +361,53 @@ def sync(
     )
 
 
+@click.command()
+@click.option("--network", help="Solana network", envvar="NETWORK")
+@click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
+@click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
+@click.option(
+    "--new-authority", help="New authority for the program", envvar="NEW_AUTHORITY"
+)
+@click.option("--keys", help="Path to keys directory", envvar="KEYS")
+@click.option(
+    "--commitment",
+    help="Confirmation level to use",
+    envvar="COMMITMENT",
+    default="finalized",
+)
+def migrate_upgrade_authority(
+    network,
+    rpc_endpoint,
+    program_key,
+    new_authority,
+    keys,
+    commitment,
+):
+    program_admin = ProgramAdmin(
+        network=network,
+        rpc_endpoint=rpc_endpoint,
+        key_dir=keys,
+        program_key=program_key,
+        commitment=commitment,
+    )
+    funding_keypair = load_keypair("funding", key_dir=keys)
+    instruction = propose(
+        {
+            "current_authority": funding_keypair.public_key,
+            "new_authority": PublicKey(new_authority),
+            "program_account": PublicKey(program_key),
+        }
+    )
+    asyncio.run(program_admin.send_transaction([instruction], [funding_keypair]))
+
+
 cli.add_command(delete_price)
 cli.add_command(delete_product)
 cli.add_command(list_accounts)
 cli.add_command(restore_links)
 cli.add_command(sync)
 cli.add_command(set_minimum_publishers_for_price)
+cli.add_command(migrate_upgrade_authority)
 
 
 logger.remove()
