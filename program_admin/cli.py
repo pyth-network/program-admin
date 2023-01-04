@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import sys
 from pathlib import Path
@@ -43,9 +44,13 @@ def cli():
     envvar="DUMP",
     default=False,
 )
-def delete_price(
-    network, rpc_endpoint, program_key, keys, commitment, product, price, dump
-):
+@click.option(
+    "--outfile",
+    help="File location to write instructions",
+    envvar="OUTFILE",
+    default="./instructions.json",
+)
+def delete_price(network, rpc_endpoint, program_key, keys, commitment, product, price):
     program_admin = ProgramAdmin(
         network=network,
         rpc_endpoint=rpc_endpoint,
@@ -65,58 +70,135 @@ def delete_price(
 
     asyncio.run(
         program_admin.send_transaction(
-            [instruction],
-            [funding_keypair, product_keypair, price_keypair],
-            dump_instructions=dump,
+            [instruction], [funding_keypair, product_keypair, price_keypair]
         )
     )
 
 
 @click.command()
-@click.option("--network", help="Solana network", envvar="NETWORK")
-@click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
+@click.option("--funding-key", help="Funding key", envvar="FUNDING_KEY")
 @click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
-@click.option("--keys", help="Path to keys directory", envvar="KEYS")
+@click.option("--price-key", help="Price account key", envvar="PRICE_KEY")
+@click.option("--value", help="New value for minimum publishers", type=int)
 @click.option(
-    "--commitment",
-    help="Confirmation level to use",
-    envvar="COMMITMENT",
-    default="finalized",
+    "--outfile",
+    help="File location to write instructions",
+    envvar="OUTFILE",
+    default=None,
 )
-@click.option("--price", help="Public key of the price account")
-@click.option(
-    "--min-pub", help="Minimum publishers value to set for this price", type=int
-)
-@click.option(
-    "--dump",
-    help="Output instructions rather than transact",
-    envvar="DUMP",
-    default=False,
-)
-def set_minimum_publishers_for_price(
-    network, rpc_endpoint, program_key, keys, commitment, price, min_pub, dump
-):
-    program_admin = ProgramAdmin(
-        network=network,
-        rpc_endpoint=rpc_endpoint,
-        key_dir=keys,
-        program_key=program_key,
-        commitment=commitment,
-    )
-    funding_keypair = load_keypair("funding", key_dir=keys)
-    price_keypair = load_keypair(PublicKey(price), key_dir=keys)
-    instruction = instructions.set_minimum_publishers(
-        program_admin.program_key,
-        funding_keypair.public_key,
-        price_keypair.public_key,
-        min_pub,
+def set_minimum_publishers(funding_key, program_key, price_key, value, outfile):
+    funding = PublicKey(funding_key)
+    program = PublicKey(program_key)
+    price = PublicKey(price_key)
+    instruction = instructions.set_minimum_publishers(program, funding, price, value)
+
+    instruction_output = json.dumps(
+        [
+            {
+                "program_id": str(program),
+                "data": instruction.data.hex(),
+                "accounts": [
+                    {
+                        "pubkey": str(account.pubkey),
+                        "is_signer": account.is_signer,
+                        "is_writable": account.is_writable,
+                    }
+                    for account in instruction.keys
+                ],
+            }
+        ]
     )
 
-    asyncio.run(
-        program_admin.send_transaction(
-            [instruction], [funding_keypair, price_keypair], dump_instructions=dump
-        )
+    sys.stdout.write(instruction_output)
+    if outfile:
+        with open(outfile, "w", encoding="utf-8") as output_file:
+            output_file.write(instruction_output)
+
+
+@click.command()
+@click.option("--funding-key", help="Funding key", envvar="FUNDING_KEY")
+@click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
+@click.option("--product-key", help="Product account key", envvar="PRODUCT_KEY")
+@click.option("--metadata", help="Metadata to add to product", type=dict)
+@click.option(
+    "--outfile",
+    help="File location to write instructions",
+    envvar="OUTFILE",
+    default=None,
+)
+def update_product_metadata(funding_key, program_key, product_key, metadata, outfile):
+    funding = PublicKey(funding_key)
+    program = PublicKey(program_key)
+    product = PublicKey(product_key)
+    instruction = instructions.update_product(program, funding, product, metadata)
+
+    instruction_output = json.dumps(
+        [
+            {
+                "program_id": str(program),
+                "data": instruction.data.hex(),
+                "accounts": [
+                    {
+                        "pubkey": str(account.pubkey),
+                        "is_signer": account.is_signer,
+                        "is_writable": account.is_writable,
+                    }
+                    for account in instruction.keys
+                ],
+            }
+        ]
     )
+
+    sys.stdout.write(instruction_output)
+    if outfile:
+        with open(outfile, "w", encoding="utf-8") as output_file:
+            output_file.write(instruction_output)
+
+
+@click.command()
+@click.option("--funding-key", help="Funding key", envvar="FUNDING_KEY")
+@click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
+@click.option("--price-key", help="Price account key", envvar="PRICE_KEY")
+@click.option("--publisher-key", help="Publisher account key", envvar="PUBLISHER_KEY")
+@click.option("--status", help="Status of publisher", type=bool)
+@click.option(
+    "--outfile",
+    help="File location to write instructions",
+    envvar="OUTFILE",
+    default=None,
+)
+def toggle_publisher(
+    funding_key, program_key, price_key, publisher_key, status, outfile
+):
+    funding = PublicKey(funding_key)
+    program = PublicKey(program_key)
+    price = PublicKey(price_key)
+    publisher = PublicKey(publisher_key)
+    instruction = instructions.toggle_publisher(
+        program, funding, price, publisher, status
+    )
+
+    instruction_output = json.dumps(
+        [
+            {
+                "program_id": str(program),
+                "data": instruction.data.hex(),
+                "accounts": [
+                    {
+                        "pubkey": str(account.pubkey),
+                        "is_signer": account.is_signer,
+                        "is_writable": account.is_writable,
+                    }
+                    for account in instruction.keys
+                ],
+            }
+        ]
+    )
+
+    sys.stdout.write(instruction_output)
+    if outfile:
+        with open(outfile, "w", encoding="utf-8") as output_file:
+            output_file.write(instruction_output)
 
 
 @click.command()
@@ -138,8 +220,14 @@ def set_minimum_publishers_for_price(
     envvar="DUMP",
     default=False,
 )
+@click.option(
+    "--outfile",
+    help="File location to write instructions",
+    envvar="OUTFILE",
+    default="./instructions.json",
+)
 def delete_product(
-    network, rpc_endpoint, program_key, keys, commitment, mapping, product, dump
+    network, rpc_endpoint, program_key, keys, commitment, mapping, product
 ):
     program_admin = ProgramAdmin(
         network=network,
@@ -160,9 +248,7 @@ def delete_product(
 
     asyncio.run(
         program_admin.send_transaction(
-            [instruction],
-            [funding_keypair, mapping_keypair, product_keypair],
-            dump_instructions=dump,
+            [instruction], [funding_keypair, mapping_keypair, product_keypair]
         )
     )
 
@@ -406,9 +492,9 @@ cli.add_command(delete_product)
 cli.add_command(list_accounts)
 cli.add_command(restore_links)
 cli.add_command(sync)
-cli.add_command(set_minimum_publishers_for_price)
+cli.add_command(set_minimum_publishers)
+cli.add_command(toggle_publisher)
+cli.add_command(update_product_metadata)
 cli.add_command(migrate_upgrade_authority)
-
-
 logger.remove()
 logger.add(sys.stdout, serialize=(not os.environ.get("DEV_MODE")))

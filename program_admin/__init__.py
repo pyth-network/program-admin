@@ -152,10 +152,7 @@ class ProgramAdmin:
             logger.debug(f"Found {len(self._price_accounts)} price account(s)")
 
     async def send_transaction(
-        self,
-        instructions: List[TransactionInstruction],
-        signers: List[Keypair],
-        dump_instructions: bool = False,
+        self, instructions: List[TransactionInstruction], signers: List[Keypair]
     ):
         if not instructions:
             return
@@ -171,25 +168,6 @@ class ProgramAdmin:
             transaction.sign(*get_actual_signers(signers, transaction))
 
             ix_index = 1
-
-            if dump_instructions:
-                dump_output = []
-                for instruction in instructions:
-                    instruction_output: Dict[str, Any] = {
-                        "program_id": str(instruction.program_id),
-                        "data": instruction.data.hex(),
-                    }
-                    accounts = []
-                    for account in instruction.keys:
-                        account_data = {
-                            "pubkey": str(account.pubkey),
-                            "is_signer": account.is_signer,
-                            "is_writable": account.is_writable,
-                        }
-                        accounts.append(account_data)
-                    instruction_output["accounts"] = accounts
-                    dump_output.append(instruction_output)
-                sys.stdout.write(json.dumps(dump_output))
 
             # FIXME: Ideally, we would compute the exact additional size of each
             # instruction, add it to the current transaction size and compare
@@ -212,15 +190,13 @@ class ProgramAdmin:
                 transaction.sign(*get_actual_signers(signers, transaction))
                 ix_index += 1
 
-            if not dump_instructions:
-                response = await client.send_raw_transaction(
-                    transaction.serialize(),
-                    opts=TxOpts(
-                        skip_confirmation=False, preflight_commitment=self.commitment
-                    ),
-                )
-                logger.debug(f"Transaction: {response.value}")
-
+            response = await client.send_raw_transaction(
+                transaction.serialize(),
+                opts=TxOpts(
+                    skip_confirmation=False, preflight_commitment=self.commitment
+                ),
+            )
+            logger.debug(f"Transaction: {response.value}")
             logger.debug(f"Sent {ix_index} instructions")
 
             remaining_instructions = instructions[ix_index:]
@@ -228,9 +204,6 @@ class ProgramAdmin:
             if remaining_instructions:
                 logger.debug("Sending remaining instructions in separate transaction")
                 await self.send_transaction(remaining_instructions, signers)
-            else:
-                if dump_instructions:
-                    return dump_output
 
     async def sync(
         self,
