@@ -9,8 +9,6 @@ import click
 from loguru import logger
 from solana.publickey import PublicKey
 
-from program_authority_escrow.instructions import propose
-
 from program_admin import ProgramAdmin, instructions
 from program_admin.keys import load_keypair, restore_symlink
 from program_admin.parsing import (
@@ -18,6 +16,7 @@ from program_admin.parsing import (
     parse_products_json,
     parse_publishers_json,
 )
+from program_admin.program_authority_escrow.instructions import propose
 
 
 @click.group()
