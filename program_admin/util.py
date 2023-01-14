@@ -32,6 +32,13 @@ async def recent_blockhash(client: AsyncClient) -> Blockhash:
     return Blockhash(str(blockhash_response.value.blockhash))
 
 
+async def account_exists(rpc_endpoint: str, key: PublicKey) -> bool:
+    client = AsyncClient(rpc_endpoint)
+    response = await client.get_account_info(key)
+
+    return bool(response.value)
+
+
 def compute_transaction_size(transaction: Transaction) -> int:
     """
     Returns the total over-the-wire size of a transaction

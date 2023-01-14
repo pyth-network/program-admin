@@ -36,6 +36,7 @@ from program_admin.util import (
     MAPPING_ACCOUNT_SIZE,
     PRICE_ACCOUNT_SIZE,
     PRODUCT_ACCOUNT_SIZE,
+    account_exists,
     compute_transaction_size,
     get_actual_signers,
     recent_blockhash,
@@ -289,19 +290,24 @@ class ProgramAdmin:
         if not mapping_chain:
             logger.info("Creating new mapping account")
 
-            logger.debug("Building system.program.create_account instruction")
-            instructions.append(
-                system_program.create_account(
-                    system_program.CreateAccountParams(
-                        from_pubkey=funding_keypair.public_key,
-                        new_account_pubkey=mapping_0_keypair.public_key,
-                        # FIXME: Change to minimum rent-exempt amount
-                        lamports=await self.fetch_minimum_balance(MAPPING_ACCOUNT_SIZE),
-                        space=MAPPING_ACCOUNT_SIZE,
-                        program_id=self.program_key,
+            if not (
+                await account_exists(self.rpc_endpoint, mapping_0_keypair.public_key)
+            ):
+                logger.debug("Building system.program.create_account instruction")
+                instructions.append(
+                    system_program.create_account(
+                        system_program.CreateAccountParams(
+                            from_pubkey=funding_keypair.public_key,
+                            new_account_pubkey=mapping_0_keypair.public_key,
+                            # FIXME: Change to minimum rent-exempt amount
+                            lamports=await self.fetch_minimum_balance(
+                                MAPPING_ACCOUNT_SIZE
+                            ),
+                            space=MAPPING_ACCOUNT_SIZE,
+                            program_id=self.program_key,
+                        )
                     )
                 )
-            )
 
             logger.debug("Building pyth_program.init_mapping instruction")
             instructions.append(
@@ -338,18 +344,25 @@ class ProgramAdmin:
 
         if not product_account:
             logger.info(f"Creating new product account for {product['jump_symbol']}")
-            logger.debug("Building system_program.create_account instruction")
-            instructions.append(
-                system_program.create_account(
-                    system_program.CreateAccountParams(
-                        from_pubkey=funding_keypair.public_key,
-                        new_account_pubkey=product_keypair.public_key,
-                        lamports=await self.fetch_minimum_balance(PRODUCT_ACCOUNT_SIZE),
-                        space=PRODUCT_ACCOUNT_SIZE,
-                        program_id=self.program_key,
+
+            if not (
+                await account_exists(self.rpc_endpoint, product_keypair.public_key)
+            ):
+                logger.debug("Building system_program.create_account instruction")
+                instructions.append(
+                    system_program.create_account(
+                        system_program.CreateAccountParams(
+                            from_pubkey=funding_keypair.public_key,
+                            new_account_pubkey=product_keypair.public_key,
+                            lamports=await self.fetch_minimum_balance(
+                                PRODUCT_ACCOUNT_SIZE
+                            ),
+                            space=PRODUCT_ACCOUNT_SIZE,
+                            program_id=self.program_key,
+                        )
                     )
                 )
-            )
+
             logger.debug("Building pyth_program.add_product instruction")
             instructions.append(
                 pyth_program.add_product(
@@ -371,18 +384,23 @@ class ProgramAdmin:
 
         if not price_account:
             logger.info(f"Creating new price account for {product['jump_symbol']}")
-            logger.debug("Building system_program.create_account instruction")
-            instructions.append(
-                system_program.create_account(
-                    system_program.CreateAccountParams(
-                        from_pubkey=funding_keypair.public_key,
-                        new_account_pubkey=price_keypair.public_key,
-                        lamports=await self.fetch_minimum_balance(PRICE_ACCOUNT_SIZE),
-                        space=PRICE_ACCOUNT_SIZE,
-                        program_id=self.program_key,
+
+            if not await account_exists(self.rpc_endpoint, price_keypair.public_key):
+                logger.debug("Building system_program.create_account instruction")
+                instructions.append(
+                    system_program.create_account(
+                        system_program.CreateAccountParams(
+                            from_pubkey=funding_keypair.public_key,
+                            new_account_pubkey=price_keypair.public_key,
+                            lamports=await self.fetch_minimum_balance(
+                                PRICE_ACCOUNT_SIZE
+                            ),
+                            space=PRICE_ACCOUNT_SIZE,
+                            program_id=self.program_key,
+                        )
                     )
                 )
-            )
+
             logger.debug("Building pyth_program.add_price instruction")
             instructions.append(
                 pyth_program.add_price(
