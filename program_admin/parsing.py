@@ -33,6 +33,7 @@ ACCOUNT_TYPE_MAPPING = 1
 ACCOUNT_TYPE_PRODUCT = 2
 ACCOUNT_TYPE_PRICE = 3
 ACCOUNT_TYPE_TEST = 4
+ACCOUNT_TYPE_PERMISSION = 5
 
 
 def parse_mapping_data(data: bytes) -> MappingData:
@@ -169,7 +170,7 @@ def parse_data(data: bytes) -> Optional[AccountData]:
         return parse_product_data(data)
     if data_type == ACCOUNT_TYPE_PRICE:
         return parse_price_data(data)
-    if data_type == ACCOUNT_TYPE_TEST:
+    if data_type in (ACCOUNT_TYPE_TEST, ACCOUNT_TYPE_PERMISSION):
         return None
 
     raise RuntimeError(f"Invalid account type: {data_type}")
