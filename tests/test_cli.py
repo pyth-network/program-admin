@@ -82,3 +82,29 @@ def test_update_product():
     json_data = json.loads(result.output)
     for key in ["program_id", "data", "accounts"]:
         assert key in json_data[0].keys()
+
+
+def test_init_price():
+    runner = CliRunner()
+    result = runner.invoke(
+        cli.init_price,
+        [
+            "--funding-key",
+            "EBz9HGQTJMtmq7cBAzWtkR2JhcxznR6hvNuVT1qEFk31",
+            "--program-key",
+            "FsJ9A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2ep1",
+            "--price-key",
+            "3SJaz6T16uqCXZpBptEJrWm483KjSMeaTnaUbeSLaAso",
+            "--exponent",
+            "12",
+        ],
+    )
+    assert result.exit_code == 0
+    assert (
+        result.output
+        == '[{"program_id": "FsJ9A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2ep1", "data": "02000000090000000c00000001000000", "accounts": [{"pubkey": "EBz9HGQTJMtmq7cBAzWtkR2JhcxznR6hvNuVT1qEFk31", "is_signer": true, "is_writable": true}, {"pubkey": "3SJaz6T16uqCXZpBptEJrWm483KjSMeaTnaUbeSLaAso", "is_signer": true, "is_writable": true}]}]'
+    )
+
+    json_data = json.loads(result.output)
+    for key in ["program_id", "data", "accounts"]:
+        assert key in json_data[0].keys()

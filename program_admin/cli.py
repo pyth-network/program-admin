@@ -486,6 +486,37 @@ def migrate_upgrade_authority(
     asyncio.run(program_admin.send_transaction([instruction], [funding_keypair]))
 
 
+@click.command()
+@click.option("--funding-key", help="Funding key", envvar="FUNDING_KEY")
+@click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
+@click.option("--price-key", help="Price account key", envvar="PRICE_KEY")
+@click.option("--exponent", help="New value for minimum publishers", type=int)
+def init_price(funding_key, program_key, price_key, exponent):
+    funding = PublicKey(funding_key)
+    program = PublicKey(program_key)
+    price = PublicKey(price_key)
+    instruction = instructions.init_price(funding, program, price, exponent)
+
+    sys.stdout.write(
+        json.dumps(
+            [
+                {
+                    "program_id": str(program),
+                    "data": instruction.data.hex(),
+                    "accounts": [
+                        {
+                            "pubkey": str(account.pubkey),
+                            "is_signer": account.is_signer,
+                            "is_writable": account.is_writable,
+                        }
+                        for account in instruction.keys
+                    ],
+                }
+            ]
+        )
+    )
+
+
 cli.add_command(delete_price)
 cli.add_command(delete_product)
 cli.add_command(list_accounts)
@@ -495,5 +526,7 @@ cli.add_command(set_minimum_publishers)
 cli.add_command(toggle_publisher)
 cli.add_command(update_product_metadata)
 cli.add_command(migrate_upgrade_authority)
+cli.add_command(init_price)
+
 logger.remove()
 logger.add(sys.stdout, serialize=(not os.environ.get("DEV_MODE")))

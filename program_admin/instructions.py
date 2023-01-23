@@ -14,6 +14,7 @@ COMMAND_UPD_PRODUCT = 3
 COMMAND_ADD_PRICE = 4
 COMMAND_ADD_PUBLISHER = 5
 COMMAND_DEL_PUBLISHER = 6
+COMMAND_INIT_PRICE = 9
 COMMAND_MIN_PUBLISHERS = 12
 COMMAND_DEL_PRICE = 15
 COMMAND_DEL_PRODUCT = 16
@@ -182,6 +183,42 @@ def delete_price(
         keys=[
             AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=product_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=price_key, is_signer=True, is_writable=True),
+        ],
+        program_id=program_key,
+    )
+
+
+def init_price(
+    funding_key: PublicKey,
+    program_key: PublicKey,
+    price_key: PublicKey,
+    exponent: int,
+    price_type: int = PRICE_TYPE_PRICE,
+) -> TransactionInstruction:
+    """
+    Pyth program init_price instruction
+
+    accounts:
+    - funding account (signer, writable)
+    - price account (signer, writable)
+    """
+    layout = Struct(
+        "version" / Int32ul, "command" / Int32sl, "exponent" / Int32sl, "type" / Int32ul
+    )
+    data = layout.build(
+        dict(
+            version=PROGRAM_VERSION,
+            command=COMMAND_INIT_PRICE,
+            exponent=exponent,
+            type=price_type,
+        )
+    )
+
+    return TransactionInstruction(
+        data=data,
+        keys=[
+            AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=price_key, is_signer=True, is_writable=True),
         ],
         program_id=program_key,
