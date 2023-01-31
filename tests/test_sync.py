@@ -373,7 +373,7 @@ async def test_sync(
 
     # Set minimum publishers testing
     funding_key = load_keypair("funding", key_dir=key_dir)
-    assert price_accounts[0].data.min_publishers == 0
+    assert price_accounts[0].data.min_publishers == 20
     min_pub_account_symbol = product_accounts[0].data.metadata["symbol"]
     price_keypair = load_keypair(
         product_accounts[0].data.first_price_account_key, key_dir=key_dir
