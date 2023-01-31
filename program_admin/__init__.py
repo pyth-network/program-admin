@@ -408,7 +408,7 @@ class ProgramAdmin:
                     funding_keypair.public_key,
                     product_keypair.public_key,
                     price_keypair.public_key,
-                    product["exponent"],
+                    int(product["exponent"]),
                 )
             )
 
