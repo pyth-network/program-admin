@@ -87,7 +87,7 @@ ENV \
 WORKDIR $APP_PATH
 COPY --from=build $APP_PATH/dist/*.whl ./
 COPY --from=build $APP_PATH/constraints.txt ./
-RUN pip install ./*.whl --constraint constraints.txt
+RUN pip install ./*.whl --requirement constraints.txt
 
 # Install Solana CLI
 RUN sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
