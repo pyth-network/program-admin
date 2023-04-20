@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Literal, TypedDict, Union
+from typing import Dict, List, Literal, Optional, TypedDict, Union
 
 from solana.publickey import PublicKey
 
@@ -13,6 +13,9 @@ ReferenceProduct = TypedDict(
         "jump_symbol": str,
         "exponent": int,
         "metadata": Dict[str, str],
+        # This field is optional to enable backward compatibility with JSON files where it is not provided.
+        # If not provided, program admin will leave the on-chain value unchanged.
+        "min_publishers": Optional[int],
     },
 )
 

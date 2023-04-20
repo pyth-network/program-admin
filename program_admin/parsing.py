@@ -241,10 +241,15 @@ def parse_products_json(file_path: Path) -> Dict[str, ReferenceProduct]:
         for product in json.load(stream):
             key = product["metadata"]["jump_symbol"]
 
+            min_publishers = None
+            if "min_publishers" in product["metadata"]:
+                min_publishers = product["metadata"]["min_publishers"]
+
             products[key] = {
                 "jump_symbol": product["metadata"]["jump_symbol"],
                 "exponent": product["metadata"]["price_exp"],
                 "metadata": product["attr_dict"],
+                "min_publishers": min_publishers,
             }
 
     return products
