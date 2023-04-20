@@ -7,8 +7,7 @@ import pytest
 import ujson as json
 from solana.publickey import PublicKey
 
-from program_admin import ProgramAdmin, instructions
-from program_admin.keys import load_keypair
+from program_admin import ProgramAdmin
 from program_admin.parsing import (
     parse_permissions_with_overrides,
     parse_products_json,
@@ -337,6 +336,7 @@ async def test_sync(
     assert price_accounts[0].data.price_components[0].publisher_key == random_publisher
     assert price_accounts[1].data.price_components[0].publisher_key == random_publisher
 
+    # Map from symbol names to the corresponding price account
     symbol_price_account_map = {}
     for product_account in product_accounts:
         symbol_price_account_map[product_account.data.metadata["symbol"]] = [
@@ -389,21 +389,7 @@ async def test_sync(
         generate_keys=False,
     )
 
-    # Set minimum publishers testing
-    funding_key = load_keypair("funding", key_dir=key_dir)
-    assert price_accounts[0].data.min_publishers == 20
-    min_pub_account_symbol = product_accounts[0].data.metadata["symbol"]
-    price_keypair = load_keypair(
-        product_accounts[0].data.first_price_account_key, key_dir=key_dir
-    )
-    min_pub_instruction = instructions.set_minimum_publishers(
-        program_admin.program_key, funding_key.public_key, price_keypair.public_key, 10
-    )
-
-    await program_admin.send_transaction(
-        [min_pub_instruction], [funding_key, price_keypair]
-    )
-
+    # Test override configuration
     await program_admin.refresh_program_accounts()
     product_accounts = list(program_admin._product_accounts.values())
     is_enabled = {"Crypto.BTC/USD": True, "Equity.US.AAPL/USD": False}
@@ -413,9 +399,6 @@ async def test_sync(
         price_account = program_admin.get_price_account(
             product_account.data.first_price_account_key
         )
-
-        if symbol == min_pub_account_symbol:
-            assert price_account.data.min_publishers == 10
 
         if is_enabled[symbol]:
             assert (

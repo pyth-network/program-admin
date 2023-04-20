@@ -25,6 +25,7 @@ jobs:
       - run: poetry run pytest
         env:
           TEST_MODE: "1"
+          DEV_MODE: "1"
   build-and-push-ecr:
     runs-on: ubuntu-latest
     needs: [run-tests]
