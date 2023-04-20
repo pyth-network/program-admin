@@ -27,7 +27,12 @@ BTC_USD = {
         "generic_symbol": "BTCUSD",
         "description": "BTC/USD",
     },
-    "metadata": {"jump_id": "78876709", "jump_symbol": "BTCUSD", "price_exp": -8},
+    "metadata": {
+        "jump_id": "78876709",
+        "jump_symbol": "BTCUSD",
+        "price_exp": -8,
+        "min_publishers": 7,
+    },
 }
 AAPL_USD = {
     "account": "",
@@ -331,6 +336,19 @@ async def test_sync(
 
     assert price_accounts[0].data.price_components[0].publisher_key == random_publisher
     assert price_accounts[1].data.price_components[0].publisher_key == random_publisher
+
+    symbol_price_account_map = {}
+    for product_account in product_accounts:
+        symbol_price_account_map[product_account.data.metadata["symbol"]] = [
+            acc
+            for acc in price_accounts
+            if acc.public_key == product_account.data.first_price_account_key
+        ][0]
+
+    assert symbol_price_account_map["Crypto.BTC/USD"].data.min_publishers == 7
+    # Warning: this test hardcodes the default minimum number of publishers for the account.
+    # This default may change if you upgrade the oracle program.
+    assert symbol_price_account_map["Equity.US.AAPL/USD"].data.min_publishers == 20
 
     # Syncing again with generate_keys=False should succeed
     await sync_from_files(

@@ -452,6 +452,21 @@ class ProgramAdmin:
             f"price_{reference_product['jump_symbol']}", key_dir=self.key_dir
         )
         price_account = self.get_price_account(price_keypair.public_key)
+
+        # Sync min publishers (if specified)
+        if reference_product["min_publishers"] is not None:
+            expected_min_publishers = reference_product["min_publishers"]
+            if price_account.data.min_publishers != expected_min_publishers:
+                instructions.append(
+                    pyth_program.set_minimum_publishers(
+                        self.program_key,
+                        funding_keypair.public_key,
+                        price_keypair.public_key,
+                        expected_min_publishers,
+                    )
+                )
+
+        # Synchronize publisher permissions
         current_publisher_keys = {
             comp.publisher_key for comp in price_account.data.price_components
         }
