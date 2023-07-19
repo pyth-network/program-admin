@@ -3,7 +3,7 @@ import os
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Tuple, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from loguru import logger
 from solana import system_program
@@ -160,9 +160,11 @@ class ProgramAdmin:
             logger.debug(f"Found {len(self._price_accounts)} price account(s)")
 
             if self.authority_permission_account:
-                logger.debug(f"Found permission account: {self.authority_permission_account.data}")
+                logger.debug(
+                    f"Found permission account: {self.authority_permission_account.data}"
+                )
             else:
-                logger.debug(f"Authority permission account not found")
+                logger.debug("Authority permission account not found")
 
     async def send_transaction(
         self, instructions: List[TransactionInstruction], signers: List[Keypair]
@@ -289,16 +291,25 @@ class ProgramAdmin:
 
         if ref_authority_permissions:
             # Sync authority permissions
-            (authority_instructions, authority_signers) = await self.sync_authority_permissions_instructions(ref_authority_permissions)
+            (
+                authority_instructions,
+                authority_signers,
+            ) = await self.sync_authority_permissions_instructions(
+                ref_authority_permissions
+            )
 
             if authority_instructions:
                 instructions.extend(authority_instructions)
 
                 if send_transactions:
-                    await self.send_transaction(authority_instructions, authority_signers)
+                    await self.send_transaction(
+                        authority_instructions, authority_signers
+                    )
 
         else:
-            logger.debug("Reference data for authority permissions is not defined, skipping...")
+            logger.debug(
+                "Reference data for authority permissions is not defined, skipping..."
+            )
 
         return instructions
 
@@ -541,15 +552,22 @@ class ProgramAdmin:
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         instructions = []
         signers = []
-        if (not self.authority_permission_account or
-            not self.authority_permission_account.matches_reference_data(reference_authority_permissions)):
-            upgrade_authority_keypair = load_keypair("upgrade_authority", key_dir=self.key_dir)
+        if (
+            not self.authority_permission_account
+            or not self.authority_permission_account.matches_reference_data(
+                reference_authority_permissions
+            )
+        ):
+            upgrade_authority_keypair = load_keypair(
+                "upgrade_authority", key_dir=self.key_dir
+            )
 
             logger.debug("Building pyth_program.upd_permissions instruction")
-            instruction = pyth_program.upd_permissions(self.program_key,
-                                                       upgrade_authority_keypair.public_key,
-                                                       reference_authority_permissions,
-                                                       )
+            instruction = pyth_program.upd_permissions(
+                self.program_key,
+                upgrade_authority_keypair.public_key,
+                reference_authority_permissions,
+            )
             instructions = [instruction]
             signers = [upgrade_authority_keypair]
         else:

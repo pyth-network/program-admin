@@ -389,7 +389,9 @@ def restore_links(network, rpc_endpoint, program_key, keys, products, commitment
     "--permissions", help="Path to reference permissions file", envvar="PERMISSIONS"
 )
 @click.option(
-    "--authority-permissions", help="Path to reference authority permissions file", envvar="AUTHORITY_PERMISSIONS"
+    "--authority-permissions",
+    help="Path to reference authority permissions file",
+    envvar="AUTHORITY_PERMISSIONS",
 )
 @click.option(
     "--overrides", help="Path to reference overrides file", envvar="OVERRIDES"
@@ -442,8 +444,10 @@ def sync(
     ref_authority_permissions = None
 
     if authority_permissions:
-        ref_authority_permissions = parse_authority_permissions_json(Path(authority_permissions))
-    
+        ref_authority_permissions = parse_authority_permissions_json(
+            Path(authority_permissions)
+        )
+
     asyncio.run(
         program_admin.sync(
             ref_products=ref_products,
