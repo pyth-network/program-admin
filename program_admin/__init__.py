@@ -3,7 +3,7 @@ import os
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Tuple
+from typing import Any, Dict, List, Literal, Tuple, Optional
 
 from loguru import logger
 from solana import system_program
@@ -25,9 +25,11 @@ from program_admin.parsing import (
 )
 from program_admin.types import (
     Network,
+    PythAuthorityPermissionAccount,
     PythMappingAccount,
     PythPriceAccount,
     PythProductAccount,
+    ReferenceAuthorityPermissions,
     ReferencePermissions,
     ReferenceProduct,
     ReferencePublishers,
@@ -58,6 +60,7 @@ class ProgramAdmin:
     rpc_endpoint: str
     key_dir: Path
     program_key: PublicKey
+    authority_permission_account: Optional[PythAuthorityPermissionAccount]
     _mapping_accounts: Dict[PublicKey, PythMappingAccount]
     _product_accounts: Dict[PublicKey, PythProductAccount]
     _price_accounts: Dict[PublicKey, PythPriceAccount]
@@ -75,6 +78,7 @@ class ProgramAdmin:
         self.key_dir = Path(key_dir)
         self.program_key = PublicKey(program_key)
         self.commitment = Commitment(commitment)
+        self.authority_permission_account = None
         self._mapping_accounts: Dict[PublicKey, PythMappingAccount] = {}
         self._product_accounts: Dict[PublicKey, PythProductAccount] = {}
         self._price_accounts: Dict[PublicKey, PythPriceAccount] = {}
@@ -148,9 +152,17 @@ class ProgramAdmin:
                 if isinstance(account, PythPriceAccount):
                     self._price_accounts[account.public_key] = account
 
+                if isinstance(account, PythAuthorityPermissionAccount):
+                    self.authority_permission_account = account
+
             logger.debug(f"Found {len(self._mapping_accounts)} mapping account(s)")
             logger.debug(f"Found {len(self._product_accounts)} product account(s)")
             logger.debug(f"Found {len(self._price_accounts)} price account(s)")
+
+            if self.authority_permission_account:
+                logger.debug(f"Found permission account: {self.authority_permission_account.data}")
+            else:
+                logger.debug(f"Authority permission account not found")
 
     async def send_transaction(
         self, instructions: List[TransactionInstruction], signers: List[Keypair]
@@ -211,6 +223,7 @@ class ProgramAdmin:
         ref_products: ReferenceProduct,
         ref_publishers: ReferencePublishers,
         ref_permissions: ReferencePermissions,
+        ref_authority_permissions: Optional[ReferenceAuthorityPermissions],
         send_transactions: bool = True,
         generate_keys: bool = False,
     ) -> List[TransactionInstruction]:
@@ -273,6 +286,19 @@ class ProgramAdmin:
                 instructions.extend(price_instructions)
                 if send_transactions:
                     await self.send_transaction(price_instructions, price_keypairs)
+
+        if ref_authority_permissions:
+            # Sync authority permissions
+            (authority_instructions, authority_signers) = await self.sync_authority_permissions_instructions(ref_authority_permissions)
+
+            if authority_instructions:
+                instructions.extend(authority_instructions)
+
+                if send_transactions:
+                    await self.send_transaction(authority_instructions, authority_signers)
+
+        else:
+            logger.debug("Reference data for authority permissions is not defined, skipping...")
 
         return instructions
 
@@ -508,3 +534,25 @@ class ProgramAdmin:
             )
 
         return (instructions, [funding_keypair, price_keypair])
+
+    async def sync_authority_permissions_instructions(
+        self,
+        reference_authority_permissions: ReferenceAuthorityPermissions,
+    ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
+        instructions = []
+        signers = []
+        if (not self.authority_permission_account or
+            not self.authority_permission_account.matches_reference_data(reference_authority_permissions)):
+            upgrade_authority_keypair = load_keypair("upgrade_authority", key_dir=self.key_dir)
+
+            logger.debug("Building pyth_program.upd_permissions instruction")
+            instruction = pyth_program.upd_permissions(self.program_key,
+                                                       upgrade_authority_keypair.public_key,
+                                                       reference_authority_permissions,
+                                                       )
+            instructions = [instruction]
+            signers = [upgrade_authority_keypair]
+        else:
+            logger.debug("Existing authority permissions OK, not updating")
+
+        return (instructions, signers)

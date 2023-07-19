@@ -29,6 +29,12 @@ ReferencePublishers = TypedDict(
 
 ReferencePermissions = Dict[str, Dict[str, List[str]]]
 
+# NOTE: not related to ReferencePermissions, see PythAuthorityPermissionAccount for details.
+class ReferenceAuthorityPermissions(TypedDict):
+    master_authority: PublicKey
+    data_curation_authority: PublicKey
+    security_authority: PublicKey
+
 # network -> symbol -> enabled / disabled. Default is no change to permissions.
 ReferenceOverrides = Dict[str, Dict[str, bool]]
 
@@ -108,8 +114,19 @@ class PriceData:
     def __str__(self) -> str:
         return f"PriceData(product_key={str(self.product_account_key)[0:5]}...)"
 
+@dataclass
+class AuthorityPermissionData:
+    master_authority: PublicKey
+    data_curation_authority: PublicKey
+    security_authority: PublicKey
 
-AccountData = Union[MappingData, ProductData, PriceData]
+    def __str__(self) -> str:
+        return f"AuthorityPermissionData(master_authority={str(self.master_authority)[:5]}..., \
+        data_curation_authority={str(self.data_curation_authority)[:5]}..., \
+        security_authority={str(self.security_authority)[:5]}...)"
+
+
+AccountData = Union[MappingData, ProductData, PriceData, AuthorityPermissionData]
 
 
 @dataclass
@@ -136,3 +153,20 @@ class PythProductAccount(PythAccount):
 @dataclass
 class PythPriceAccount(PythAccount):
     data: PriceData
+
+@dataclass
+class PythAuthorityPermissionAccount(PythAccount):
+    """
+    On-chain authorities permissions account.
+
+    IMPORTANT: This is not related to ReferencePermissions which
+    refers to publisher authorization to publish a given symbol. This
+    account is responsible for global oracle administration
+    authorities.
+    """
+    data: AuthorityPermissionData
+
+    def matches_reference_data(self, refdata: ReferenceAuthorityPermissions) -> bool:
+        return (refdata["master_authority"] == self.data.master_authority and
+                refdata["data_curation_authority"] == self.data.data_curation_authority and
+                refdata["security_authority"] == self.data.security_authority)

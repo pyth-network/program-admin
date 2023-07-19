@@ -3,8 +3,11 @@ from typing import Dict
 from construct import Bytes, Int32sl, Int32ul, Struct
 from solana.publickey import PublicKey
 from solana.transaction import AccountMeta, TransactionInstruction
+from solana.system_program import SYS_PROGRAM_ID
 
 from program_admin.util import encode_product_metadata
+
+from program_admin.types import ReferenceAuthorityPermissions
 
 # TODO: Implement add_mapping instruction
 
@@ -17,9 +20,15 @@ COMMAND_DEL_PUBLISHER = 6
 COMMAND_MIN_PUBLISHERS = 12
 COMMAND_DEL_PRICE = 15
 COMMAND_DEL_PRODUCT = 16
+COMMAND_UPD_PERMISSIONS = 17
+
 PRICE_TYPE_PRICE = 1
 PROGRAM_VERSION = 2
 
+AUTHORITY_PERMISSIONS_PDA_SEED = b"permissions";
+
+# NOTE(2023-07-11): currently the loader's address is not part of our version of solana-py
+BPF_UPGRADEABLE_LOADER_ID = "BPFLoaderUpgradeab1e11111111111111111111111"
 
 def init_mapping(
     program_key: PublicKey, funding_key: PublicKey, mapping_key: PublicKey
@@ -255,3 +264,65 @@ def toggle_publisher(
         ],
         program_id=program_key,
     )
+
+def upd_permissions(
+        program_key: PublicKey,
+        upgrade_authority: PublicKey,
+        refdata: ReferenceAuthorityPermissions,
+        ) -> TransactionInstruction:
+    """
+    Pyth program upd_permissions instruction. Sets contents of the
+    permission account which allows us to name various authorities:
+    - master_authority        - Authorized to do CRUD on mapping, product and price accounts.
+    - data_curation_authority - Authorized for (de)permissioning publishers, can also call set_min_publishers.
+    - security_authority      - Authorized for the ResizePriceAccount instruction.
+
+    The authority pubkeys are passed in instruction data.
+
+    Accounts:
+    - upgrade authority    (signer, writable)     - must own the oracle program data.
+    - program data account (non-signer, readonly) - must be program data for the oracle, must be owned by upgrade authority.
+    - permissions account  (non-signer, writable) - PDA of the oracle program, generated automatically, stores the permission information
+    - system program       (non-signer, readonly) - Allows the create_account() call if the permissions account is uninitialized
+
+    """
+    ix_data_layout = Struct(
+        "version" / Int32ul,
+        "command" / Int32sl,
+        "master_authority" / Bytes(32),
+        "data_curation_authority" / Bytes(32),
+        "security_authority" / Bytes(32),
+        )
+
+    ix_data = ix_data_layout.build(
+        dict(version=PROGRAM_VERSION,
+             command=COMMAND_UPD_PERMISSIONS,
+             master_authority=bytes(refdata["master_authority"]),
+             data_curation_authority=bytes(refdata["data_curation_authority"]),
+             security_authority=bytes(refdata["security_authority"]),
+        )
+        )
+
+    [permissions_account, _bump] = PublicKey.find_program_address(
+        [AUTHORITY_PERMISSIONS_PDA_SEED],
+        program_key,
+    )
+
+    # Under the BPF upgradeable loader, the program data key is a PDA
+    # of the loader program address, taking the consumer program ID as
+    # seed. In our case, oracle program ID is the seed.
+    [oracle_program_data_key, _bump] = PublicKey.find_program_address(
+        [bytes(program_key)],
+        PublicKey(BPF_UPGRADEABLE_LOADER_ID),
+    )
+
+    return TransactionInstruction(
+        data=ix_data,
+        keys=[
+                AccountMeta(pubkey=upgrade_authority, is_signer=True, is_writable=True),
+                AccountMeta(pubkey=oracle_program_data_key, is_signer=False, is_writable=False),
+                AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=True),
+                AccountMeta(pubkey=SYS_PROGRAM_ID, is_signer=False, is_writable=False),
+            ],
+        program_id=program_key,
+        )
