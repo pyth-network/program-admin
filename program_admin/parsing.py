@@ -21,15 +21,13 @@ from program_admin.types import (
     PythMappingAccount,
     PythPriceAccount,
     PythProductAccount,
-    ReferenceOverrides,
     ReferenceAuthorityPermissions,
+    ReferenceOverrides,
     ReferencePermissions,
     ReferenceProduct,
     ReferencePublishers,
 )
 from program_admin.util import apply_overrides
-
-from loguru import logger
 
 MAGIC_NUMBER = "0xa1b2c3d4"
 VERSION = 2
@@ -159,9 +157,9 @@ def parse_price_data(data: bytes) -> PriceData:
 
 
 def parse_authority_permission_data(data: bytes) -> AuthorityPermissionData:
-    # Start by offsetting the header, currently 4 * u32 = 16 bytes 
-    data_with_current_offset = data[16:] 
-    
+    # Start by offsetting the header, currently 4 * u32 = 16 bytes
+    data_with_current_offset = data[16:]
+
     master_authority = PublicKey(data_with_current_offset[:32])
 
     # Continue adjusting offset after parsing each chunk of the data.
@@ -169,12 +167,15 @@ def parse_authority_permission_data(data: bytes) -> AuthorityPermissionData:
 
     data_curation_authority = PublicKey(data_with_current_offset[:32])
     data_with_current_offset = data_with_current_offset[32:]
-    
+
     security_authority = PublicKey(data_with_current_offset[:32])
 
-    return AuthorityPermissionData(master_authority, data_curation_authority, security_authority)
+    return AuthorityPermissionData(
+        master_authority, data_curation_authority, security_authority
+    )
 
 
+# pylint: disable=too-many-return-statements
 def parse_data(data: bytes) -> Optional[AccountData]:
     magic_number = hex(Int32ul.parse(data[0:]))
     version = Int32ul.parse(data[4:])
@@ -196,7 +197,7 @@ def parse_data(data: bytes) -> Optional[AccountData]:
         return parse_authority_permission_data(data)
     if data_type == ACCOUNT_TYPE_TEST:
         return None
-        
+
     raise RuntimeError(f"Invalid account type: {data_type}")
 
 
@@ -240,9 +241,11 @@ def parse_publishers_json(file_path: Path) -> ReferencePublishers:
             "names": names,
         }
 
+
 def parse_permissions_json(file_path: Path) -> ReferencePermissions:
     with file_path.open() as stream:
         return json.load(stream)
+
 
 def parse_authority_permissions_json(file_path: Path) -> ReferenceAuthorityPermissions:
     with file_path.open() as stream:
@@ -251,8 +254,10 @@ def parse_authority_permissions_json(file_path: Path) -> ReferenceAuthorityPermi
 
         return ReferenceAuthorityPermissions(
             master_authority=PublicKey(str(perm_dict["master_authority"])),
-            data_curation_authority=PublicKey(str(perm_dict["data_curation_authority"])),
-            security_authority=PublicKey(str(perm_dict["security_authority"]))
+            data_curation_authority=PublicKey(
+                str(perm_dict["data_curation_authority"])
+            ),
+            security_authority=PublicKey(str(perm_dict["security_authority"])),
         )
 
 

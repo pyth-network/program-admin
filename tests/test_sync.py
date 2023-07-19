@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
@@ -71,13 +70,13 @@ MASTER_AUTHORITY = "23CGbZq2AAzZcHk1vVBs9Zq4AkNJhjxRbjMiCFTy8vJP"
 DATA_CURATION_AUTHORITY = "33CGbZq2AAzZcHk1vVBs9Zq4AkNJhjxRbjMiCFTy8vJP"
 SECURITY_AUTHORITY = "43CGbZq2AAzZcHk1vVBs9Zq4AkNJhjxRbjMiCFTy8vJP"
 
+
 @pytest.fixture
 def set_test_env_var():
     """
     Sets an env required for program-admin sync() testing
     """
     os.environ["TEST_MODE"] = "1"
-
 
 
 @pytest.fixture
@@ -151,24 +150,22 @@ def permissions2_json():
 
         yield jsonfile.name
 
+
 @pytest.fixture
 def authority_permissions_json():
     with NamedTemporaryFile() as jsonfile:
         value = {
-                    "master_authority": MASTER_AUTHORITY,
-                    "data_curation_authority": DATA_CURATION_AUTHORITY,
-                    "security_authority": SECURITY_AUTHORITY,
-                }
+            "master_authority": MASTER_AUTHORITY,
+            "data_curation_authority": DATA_CURATION_AUTHORITY,
+            "security_authority": SECURITY_AUTHORITY,
+        }
 
         LOGGER.debug(f"Writing authority permissions JSON:\n{value}")
-        jsonfile.write(
-            json.dumps(
-                value
-            ).encode()
-        )
+        jsonfile.write(json.dumps(value).encode())
         jsonfile.flush()
 
         yield jsonfile.name
+
 
 @pytest.fixture
 def empty_overrides_json():
@@ -238,6 +235,7 @@ async def pyth_keypair(key_dir, validator):
 
     yield f"{key_dir}/funding.json"
 
+
 @pytest.fixture
 async def upgrade_authority_keypair(key_dir, validator):
     keypair_path = f"{key_dir}/upgrade_authority.json"
@@ -276,7 +274,8 @@ async def upgrade_authority_keypair(key_dir, validator):
     if stderr:
         print(f"[stderr]\n{stderr.decode()}")
 
-    yield keypair_path 
+    yield keypair_path
+
 
 # pylint: disable=redefined-outer-name,unused-argument
 @pytest.fixture
@@ -506,7 +505,9 @@ async def sync_from_files(
     ref_permissions = parse_permissions_with_overrides(
         Path(permissions_path), Path(overrides_path), network
     )
-    ref_authority_permissions = parse_authority_permissions_json(Path(authority_permissions_path))
+    ref_authority_permissions = parse_authority_permissions_json(
+        Path(authority_permissions_path)
+    )
 
     return await program_admin.sync(
         ref_products,
