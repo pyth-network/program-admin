@@ -30,6 +30,11 @@ ENV \
 RUN curl -sSL https://install.python-poetry.org | python
 ENV PATH="$POETRY_HOME/bin:$PATH"
 
+# Install Solana CLI
+RUN sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
+ENV PATH=$PATH:/root/.local/share/solana/install/active_release/bin
+
+
 WORKDIR $APP_PATH
 COPY ./poetry.lock ./pyproject.toml ./
 COPY ./$APP_PACKAGE ./
@@ -73,7 +78,8 @@ FROM python:$PYTHON_VERSION as production
 ARG APP_NAME
 ARG APP_PATH
 
-# Install Solana CLI
+# Install Solana CLI, we redo this step because this Docker target
+# starts from scratch without the earlier Solana installation
 RUN sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
 ENV PATH=$PATH:/root/.local/share/solana/install/active_release/bin
 

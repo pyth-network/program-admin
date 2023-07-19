@@ -1,5 +1,7 @@
 import asyncio
+import logging
 import os
+import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
@@ -9,12 +11,15 @@ from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin
 from program_admin.parsing import (
+    parse_authority_permissions_json,
     parse_permissions_with_overrides,
     parse_products_json,
     parse_publishers_json,
 )
 from program_admin.types import Network, ReferenceOverrides, ReferencePermissions
 from program_admin.util import apply_overrides
+
+LOGGER = logging.getLogger(__name__)
 
 BTC_USD = {
     "account": "",
@@ -62,12 +67,17 @@ ETH_USD = {
 }
 
 
+MASTER_AUTHORITY = "23CGbZq2AAzZcHk1vVBs9Zq4AkNJhjxRbjMiCFTy8vJP"
+DATA_CURATION_AUTHORITY = "33CGbZq2AAzZcHk1vVBs9Zq4AkNJhjxRbjMiCFTy8vJP"
+SECURITY_AUTHORITY = "43CGbZq2AAzZcHk1vVBs9Zq4AkNJhjxRbjMiCFTy8vJP"
+
 @pytest.fixture
-def check_test_env_var():
-    if not os.environ.get("TEST_MODE"):
-        raise RuntimeError(
-            "Environment variable TEST_MODE must be set in order for tests to run. If testing on a local machine, set via TEST_MODE=1"
-        )
+def set_test_env_var():
+    """
+    Sets an env required for program-admin sync() testing
+    """
+    os.environ["TEST_MODE"] = "1"
+
 
 
 @pytest.fixture
@@ -141,6 +151,24 @@ def permissions2_json():
 
         yield jsonfile.name
 
+@pytest.fixture
+def authority_permissions_json():
+    with NamedTemporaryFile() as jsonfile:
+        value = {
+                    "master_authority": MASTER_AUTHORITY,
+                    "data_curation_authority": DATA_CURATION_AUTHORITY,
+                    "security_authority": SECURITY_AUTHORITY,
+                }
+
+        LOGGER.debug(f"Writing authority permissions JSON:\n{value}")
+        jsonfile.write(
+            json.dumps(
+                value
+            ).encode()
+        )
+        jsonfile.flush()
+
+        yield jsonfile.name
 
 @pytest.fixture
 def empty_overrides_json():
@@ -210,10 +238,49 @@ async def pyth_keypair(key_dir, validator):
 
     yield f"{key_dir}/funding.json"
 
+@pytest.fixture
+async def upgrade_authority_keypair(key_dir, validator):
+    keypair_path = f"{key_dir}/upgrade_authority.json"
+
+    process = await asyncio.create_subprocess_shell(
+        f"solana-keygen new --no-bip39-passphrase -o {keypair_path}",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    await process.wait()
+
+    if process.returncode != 0:
+        stdout, stderr = await process.communicate()
+
+        if stdout:
+            print(f"[stdout]\n{stdout.decode()}")
+        if stderr:
+            print(f"[stderr]\n{stderr.decode()}")
+
+        raise RuntimeError("Failed to generate upgrade authority key")
+
+    # Fund the keypair
+    process = await asyncio.create_subprocess_shell(
+        f"solana airdrop 100 -k {keypair_path} -u localhost",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    await process.wait()
+
+    stdout, stderr = await process.communicate()
+    print(f"[cmd exited with {process.returncode}]")
+    if stdout:
+        print(f"[stdout]\n{stdout.decode()}")
+    if stderr:
+        print(f"[stderr]\n{stderr.decode()}")
+
+    yield keypair_path 
 
 # pylint: disable=redefined-outer-name,unused-argument
 @pytest.fixture
-async def pyth_program(pyth_keypair):
+async def pyth_program(pyth_keypair, upgrade_authority_keypair):
     process = await asyncio.create_subprocess_shell(
         f"solana airdrop 100 -k {pyth_keypair} -u localhost",
         stdout=asyncio.subprocess.PIPE,
@@ -230,7 +297,11 @@ async def pyth_program(pyth_keypair):
         print(f"[stderr]\n{stderr.decode()}")
 
     process = await asyncio.create_subprocess_shell(
-        f"solana program deploy -k {pyth_keypair} -u localhost tests/pyth_oracle.so",
+        f"solana program deploy \
+        -k {pyth_keypair} \
+        -u localhost \
+        --upgrade-authority {upgrade_authority_keypair} \
+        tests/pyth_oracle.so",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -292,7 +363,7 @@ def test_apply_overrides():
 
 # pylint: disable=protected-access,redefined-outer-name
 async def test_sync(
-    check_test_env_var,
+    set_test_env_var,
     key_dir,
     pyth_program,
     products_json,
@@ -300,6 +371,7 @@ async def test_sync(
     publishers_json,
     permissions_json,
     permissions2_json,
+    authority_permissions_json,
     empty_overrides_json,
     localhost_overrides_json,
 ):
@@ -316,6 +388,7 @@ async def test_sync(
         products_path=products_json,
         publishers_path=publishers_json,
         permissions_path=permissions_json,
+        authority_permissions_path=authority_permissions_json,
         overrides_path=empty_overrides_json,
         network=network,
         generate_keys=True,
@@ -325,6 +398,8 @@ async def test_sync(
 
     product_accounts = list(program_admin._product_accounts.values())
     price_accounts = list(program_admin._price_accounts.values())
+    authority_permissions = program_admin.authority_permission_account.data
+
     reference_symbols = ["Crypto.BTC/USD", "Equity.US.AAPL/USD"]
 
     with open(publishers_json, encoding="utf8") as file:
@@ -335,6 +410,10 @@ async def test_sync(
 
     assert price_accounts[0].data.price_components[0].publisher_key == random_publisher
     assert price_accounts[1].data.price_components[0].publisher_key == random_publisher
+
+    assert str(authority_permissions.master_authority) == MASTER_AUTHORITY
+    assert str(authority_permissions.data_curation_authority) == DATA_CURATION_AUTHORITY
+    assert str(authority_permissions.security_authority) == SECURITY_AUTHORITY
 
     # Map from symbol names to the corresponding price account
     symbol_price_account_map = {}
@@ -356,6 +435,7 @@ async def test_sync(
         products_path=products_json,
         publishers_path=publishers_json,
         permissions_path=permissions_json,
+        authority_permissions_path=authority_permissions_json,
         overrides_path=empty_overrides_json,
         network=network,
         generate_keys=False,
@@ -369,6 +449,7 @@ async def test_sync(
             products_path=products2_json,
             publishers_path=publishers_json,
             permissions_path=permissions2_json,
+            authority_permissions_path=authority_permissions_json,
             overrides_path=empty_overrides_json,
             network=network,
             generate_keys=False,
@@ -384,6 +465,7 @@ async def test_sync(
         products_path=products_json,
         publishers_path=publishers_json,
         permissions_path=permissions_json,
+        authority_permissions_path=authority_permissions_json,
         overrides_path=localhost_overrides_json,
         network=network,
         generate_keys=False,
@@ -413,6 +495,7 @@ async def sync_from_files(
     products_path: str,
     publishers_path: str,
     permissions_path: str,
+    authority_permissions_path: str,
     overrides_path: str,
     network: Network,
     send_transactions: bool = True,
@@ -423,11 +506,13 @@ async def sync_from_files(
     ref_permissions = parse_permissions_with_overrides(
         Path(permissions_path), Path(overrides_path), network
     )
+    ref_authority_permissions = parse_authority_permissions_json(Path(authority_permissions_path))
 
     return await program_admin.sync(
         ref_products,
         ref_publishers,
         ref_permissions,
+        ref_authority_permissions,
         send_transactions,
         generate_keys,
     )
