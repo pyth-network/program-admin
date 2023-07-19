@@ -160,7 +160,7 @@ def authority_permissions_json():
             "security_authority": SECURITY_AUTHORITY,
         }
 
-        LOGGER.debug(f"Writing authority permissions JSON:\n{value}")
+        LOGGER.debug("Writing authority permissions JSON:\n%s", value)
         jsonfile.write(json.dumps(value).encode())
         jsonfile.flush()
 
