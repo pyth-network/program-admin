@@ -8,6 +8,7 @@ from solders.rpc.responses import RpcKeyedAccount  # pylint: disable=import-erro
 
 from program_admin.types import (
     AccountData,
+    AuthorityPermissionData,
     MappingData,
     Network,
     PriceComponent,
@@ -16,15 +17,19 @@ from program_admin.types import (
     ProductData,
     ProductMetadata,
     PythAccount,
+    PythAuthorityPermissionAccount,
     PythMappingAccount,
     PythPriceAccount,
     PythProductAccount,
     ReferenceOverrides,
+    ReferenceAuthorityPermissions,
     ReferencePermissions,
     ReferenceProduct,
     ReferencePublishers,
 )
 from program_admin.util import apply_overrides
+
+from loguru import logger
 
 MAGIC_NUMBER = "0xa1b2c3d4"
 VERSION = 2
@@ -33,7 +38,7 @@ ACCOUNT_TYPE_MAPPING = 1
 ACCOUNT_TYPE_PRODUCT = 2
 ACCOUNT_TYPE_PRICE = 3
 ACCOUNT_TYPE_TEST = 4
-ACCOUNT_TYPE_PERMISSION = 5
+ACCOUNT_TYPE_AUTHORITY_PERMISSION = 5
 
 
 def parse_mapping_data(data: bytes) -> MappingData:
@@ -153,6 +158,23 @@ def parse_price_data(data: bytes) -> PriceData:
     )
 
 
+def parse_authority_permission_data(data: bytes) -> AuthorityPermissionData:
+    # Start by offsetting the header, currently 4 * u32 = 16 bytes 
+    data_with_current_offset = data[16:] 
+    
+    master_authority = PublicKey(data_with_current_offset[:32])
+
+    # Continue adjusting offset after parsing each chunk of the data.
+    data_with_current_offset = data_with_current_offset[32:]
+
+    data_curation_authority = PublicKey(data_with_current_offset[:32])
+    data_with_current_offset = data_with_current_offset[32:]
+    
+    security_authority = PublicKey(data_with_current_offset[:32])
+
+    return AuthorityPermissionData(master_authority, data_curation_authority, security_authority)
+
+
 def parse_data(data: bytes) -> Optional[AccountData]:
     magic_number = hex(Int32ul.parse(data[0:]))
     version = Int32ul.parse(data[4:])
@@ -170,9 +192,11 @@ def parse_data(data: bytes) -> Optional[AccountData]:
         return parse_product_data(data)
     if data_type == ACCOUNT_TYPE_PRICE:
         return parse_price_data(data)
-    if data_type in (ACCOUNT_TYPE_TEST, ACCOUNT_TYPE_PERMISSION):
+    if data_type == ACCOUNT_TYPE_AUTHORITY_PERMISSION:
+        return parse_authority_permission_data(data)
+    if data_type == ACCOUNT_TYPE_TEST:
         return None
-
+        
     raise RuntimeError(f"Invalid account type: {data_type}")
 
 
@@ -195,6 +219,8 @@ def parse_account(response: RpcKeyedAccount) -> Optional[PythAccount]:
         return PythProductAccount(**account_args)
     if isinstance(account_data, PriceData):
         return PythPriceAccount(**account_args)
+    if isinstance(account_data, AuthorityPermissionData):
+        return PythAuthorityPermissionAccount(**account_args)
 
     raise RuntimeError("Invalid account data")
 
@@ -214,10 +240,20 @@ def parse_publishers_json(file_path: Path) -> ReferencePublishers:
             "names": names,
         }
 
-
 def parse_permissions_json(file_path: Path) -> ReferencePermissions:
     with file_path.open() as stream:
         return json.load(stream)
+
+def parse_authority_permissions_json(file_path: Path) -> ReferenceAuthorityPermissions:
+    with file_path.open() as stream:
+        # Vanilla Python does not enforce type hints, explicitly build pubkeys
+        perm_dict = json.load(stream)
+
+        return ReferenceAuthorityPermissions(
+            master_authority=PublicKey(str(perm_dict["master_authority"])),
+            data_curation_authority=PublicKey(str(perm_dict["data_curation_authority"])),
+            security_authority=PublicKey(str(perm_dict["security_authority"]))
+        )
 
 
 def parse_overrides_json(file_path: Path) -> ReferenceOverrides:
