@@ -2,12 +2,11 @@ from typing import Dict
 
 from construct import Bytes, Int32sl, Int32ul, Struct
 from solana.publickey import PublicKey
-from solana.transaction import AccountMeta, TransactionInstruction
 from solana.system_program import SYS_PROGRAM_ID
-
-from program_admin.util import encode_product_metadata
+from solana.transaction import AccountMeta, TransactionInstruction
 
 from program_admin.types import ReferenceAuthorityPermissions
+from program_admin.util import encode_product_metadata
 
 # TODO: Implement add_mapping instruction
 
@@ -25,10 +24,11 @@ COMMAND_UPD_PERMISSIONS = 17
 PRICE_TYPE_PRICE = 1
 PROGRAM_VERSION = 2
 
-AUTHORITY_PERMISSIONS_PDA_SEED = b"permissions";
+AUTHORITY_PERMISSIONS_PDA_SEED = b"permissions"
 
 # NOTE(2023-07-11): currently the loader's address is not part of our version of solana-py
 BPF_UPGRADEABLE_LOADER_ID = "BPFLoaderUpgradeab1e11111111111111111111111"
+
 
 def init_mapping(
     program_key: PublicKey, funding_key: PublicKey, mapping_key: PublicKey
@@ -265,11 +265,12 @@ def toggle_publisher(
         program_id=program_key,
     )
 
+
 def upd_permissions(
-        program_key: PublicKey,
-        upgrade_authority: PublicKey,
-        refdata: ReferenceAuthorityPermissions,
-        ) -> TransactionInstruction:
+    program_key: PublicKey,
+    upgrade_authority: PublicKey,
+    refdata: ReferenceAuthorityPermissions,
+) -> TransactionInstruction:
     """
     Pyth program upd_permissions instruction. Sets contents of the
     permission account which allows us to name various authorities:
@@ -292,16 +293,17 @@ def upd_permissions(
         "master_authority" / Bytes(32),
         "data_curation_authority" / Bytes(32),
         "security_authority" / Bytes(32),
-        )
+    )
 
     ix_data = ix_data_layout.build(
-        dict(version=PROGRAM_VERSION,
-             command=COMMAND_UPD_PERMISSIONS,
-             master_authority=bytes(refdata["master_authority"]),
-             data_curation_authority=bytes(refdata["data_curation_authority"]),
-             security_authority=bytes(refdata["security_authority"]),
+        dict(
+            version=PROGRAM_VERSION,
+            command=COMMAND_UPD_PERMISSIONS,
+            master_authority=bytes(refdata["master_authority"]),
+            data_curation_authority=bytes(refdata["data_curation_authority"]),
+            security_authority=bytes(refdata["security_authority"]),
         )
-        )
+    )
 
     [permissions_account, _bump] = PublicKey.find_program_address(
         [AUTHORITY_PERMISSIONS_PDA_SEED],
@@ -319,10 +321,12 @@ def upd_permissions(
     return TransactionInstruction(
         data=ix_data,
         keys=[
-                AccountMeta(pubkey=upgrade_authority, is_signer=True, is_writable=True),
-                AccountMeta(pubkey=oracle_program_data_key, is_signer=False, is_writable=False),
-                AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=True),
-                AccountMeta(pubkey=SYS_PROGRAM_ID, is_signer=False, is_writable=False),
-            ],
+            AccountMeta(pubkey=upgrade_authority, is_signer=True, is_writable=True),
+            AccountMeta(
+                pubkey=oracle_program_data_key, is_signer=False, is_writable=False
+            ),
+            AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=SYS_PROGRAM_ID, is_signer=False, is_writable=False),
+        ],
         program_id=program_key,
-        )
+    )
