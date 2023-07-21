@@ -34,7 +34,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v2
-      - uses: aws-actions/configure-aws-credentials@8a84b07f2009032ade05a88a28750d733cc30db1
+      - uses: aws-actions/configure-aws-credentials@v2.2.0
         with:
           role-to-assume: arn:aws:iam::192824654885:role/github-actions-ecr
           aws-region: eu-west-2
