@@ -17,6 +17,7 @@ COMMAND_ADD_PRICE = 4
 COMMAND_ADD_PUBLISHER = 5
 COMMAND_DEL_PUBLISHER = 6
 COMMAND_MIN_PUBLISHERS = 12
+COMMAND_RESIZE_PRICE_ACCOUNT = 14
 COMMAND_DEL_PRICE = 15
 COMMAND_DEL_PRODUCT = 16
 COMMAND_UPD_PERMISSIONS = 17
@@ -327,6 +328,49 @@ def upd_permissions(
             ),
             AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=True),
             AccountMeta(pubkey=SYS_PROGRAM_ID, is_signer=False, is_writable=False),
+        ],
+        program_id=program_key,
+    )
+
+
+def resize_price_account_v2(
+    program_key: PublicKey, security_authority: PublicKey, price_account: PublicKey
+) -> TransactionInstruction:
+    """
+    Pyth program resize_price_account instruction. It migrates the
+    specified price account to a new v2 format. The new format
+    includes more price component slots, allowing more publishers per
+    price account. Additionally, PriceCumulative is included
+
+    The authority pubkeys are passed in instruction data.
+
+    Accounts:
+    - security authority  (signer, writable)     - must be the pubkey set as security_authority in permission account.
+    - price account       (signer, writable)     - The price account to resize
+    - system program      (non-signer, readonly) - Allows the resize_account() call
+    - permissions account (non-signer, readonly) - PDA of the oracle program, generated automatically, stores the permission information
+    """
+    ix_data_layout = Struct(
+        "version" / Int32ul,
+        "command" / Int32sl,
+    )
+
+    ix_data = ix_data_layout.build(
+        dict(version=PROGRAM_VERSION, command=COMMAND_RESIZE_PRICE_ACCOUNT)
+    )
+
+    [permissions_account, _bump] = PublicKey.find_program_address(
+        [AUTHORITY_PERMISSIONS_PDA_SEED],
+        program_key,
+    )
+
+    return TransactionInstruction(
+        data=ix_data,
+        keys=[
+            AccountMeta(pubkey=security_authority, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=price_account, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=SYS_PROGRAM_ID, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=False),
         ],
         program_id=program_key,
     )

@@ -414,6 +414,12 @@ def restore_links(network, rpc_endpoint, program_key, keys, products, commitment
     envvar="GENERATE_KEYS",
     default="false",
 )
+@click.option(
+    "--allocate-price-v2",
+    help="Whether to use price account v2 byte size when allocating new price accounts. Used for resize_price_account_v2 testing",
+    envvar="ALLOCATE_PRICE_V2",
+    default="true",
+)
 def sync(
     network,
     rpc_endpoint,
@@ -427,6 +433,7 @@ def sync(
     commitment,
     send_transactions,
     generate_keys,
+    allocate_price_v2,
 ):
     program_admin = ProgramAdmin(
         network=network,
@@ -456,6 +463,7 @@ def sync(
             ref_authority_permissions=ref_authority_permissions,
             send_transactions=(send_transactions == "true"),
             generate_keys=(generate_keys == "true"),
+            allocate_price_v2=(allocate_price_v2 == "true"),
         )
     )
 
@@ -500,6 +508,52 @@ def migrate_upgrade_authority(
     asyncio.run(program_admin.send_transaction([instruction], [funding_keypair]))
 
 
+@click.command(help="Resize price accounts to the PriceAccountV2 format")
+@click.option("--network", help="Solana network", envvar="NETWORK")
+@click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
+@click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
+@click.option(
+    "--security-authority",
+    help="Path to security authority keypair for executing resize instruction",
+    envvar="SECURITY_AUTHORITY",
+)
+@click.option("--keys", help="Path to keys directory", envvar="KEYS")
+@click.option(
+    "--commitment",
+    help="Confirmation level to use",
+    envvar="COMMITMENT",
+    default="finalized",
+)
+@click.option(
+    "--send-transactions",
+    help="Whether to send transactions or just print instructions (set to 'true' or 'false')",
+    envvar="SEND_TRANSACTIONS",
+    default="true",
+)
+def resize_price_accounts_v2(
+    network,
+    rpc_endpoint,
+    keys,
+    program_key,
+    security_authority,
+    commitment,
+    send_transactions,
+):
+    program_admin = ProgramAdmin(
+        network=network,
+        rpc_endpoint=rpc_endpoint,
+        key_dir=keys,
+        program_key=program_key,
+        commitment=commitment,
+    )
+
+    asyncio.run(
+        program_admin.resize_price_accounts_v2(
+            Path(security_authority), (send_transactions == "true")
+        )
+    )
+
+
 cli.add_command(delete_price)
 cli.add_command(delete_product)
 cli.add_command(list_accounts)
@@ -509,5 +563,6 @@ cli.add_command(set_minimum_publishers)
 cli.add_command(toggle_publisher)
 cli.add_command(update_product_metadata)
 cli.add_command(migrate_upgrade_authority)
+cli.add_command(resize_price_accounts_v2)
 logger.remove()
 logger.add(sys.stdout, serialize=(not os.environ.get("DEV_MODE")))

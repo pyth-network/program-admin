@@ -1,0 +1,12 @@
+.envrc
+.mypy_cache
+__pycache__
+keys
+permissions.json
+products.json
+publishers.json
+test-ledger
+
+# IntelliJ files
+.idea
+*.iml

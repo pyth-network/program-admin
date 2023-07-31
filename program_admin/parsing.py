@@ -27,7 +27,12 @@ from program_admin.types import (
     ReferenceProduct,
     ReferencePublishers,
 )
-from program_admin.util import apply_overrides
+from program_admin.util import (
+    PRICE_ACCOUNT_V2_SIZE,
+    PRICE_V1_COMP_COUNT,
+    PRICE_V2_COMP_COUNT,
+    apply_overrides,
+)
 
 MAGIC_NUMBER = "0xa1b2c3d4"
 VERSION = 2
@@ -90,6 +95,9 @@ def parse_price_info(data: bytes) -> PriceInfo:
     return PriceInfo(price, confidence, status, corporate_action, publish_slot)
 
 
+# NOTE(2023-07-31): For v2 prices the parsed data does not include
+# price_cumulative values. This value is currently out-of-scope for
+# program-admin.
 def parse_price_data(data: bytes) -> PriceData:
     used_size = Int32ul.parse(data[12:])
     price_type = Int32ul.parse(data[16:])
@@ -113,25 +121,39 @@ def parse_price_data(data: bytes) -> PriceData:
     previous_timestamp = Int64sl.parse(data[200:])
     aggregate = parse_price_info(data[208:240])
     offset = 240
-    parse_next_component = True
+
     price_components = []
 
-    while offset < len(data) and parse_next_component:
+    # PriceAccountV2 contains trailing data after the PriceComp
+    # array. We check how many items we may read before the trailing
+    # data starts.
+    max_components = (
+        PRICE_V1_COMP_COUNT
+        if used_size < PRICE_ACCOUNT_V2_SIZE
+        else PRICE_V2_COMP_COUNT
+    )
+
+    for _ in range(max_components):
+
         publisher_key = PublicKey(data[offset : offset + 32])
         offset += 32
 
+        # Break on the first empty publisher slot
         if publisher_key == PublicKey(bytes(32)):
-            parse_next_component = False
-        else:
-            aggregate_price = parse_price_info(data[offset : offset + 32])
-            offset += 32
+            break
 
-            latest_price = parse_price_info(data[offset : offset + 32])
-            offset += 32
+        aggregate_price = parse_price_info(data[offset : offset + 32])
+        offset += 32
 
-            price_components.append(
-                PriceComponent(publisher_key, aggregate_price, latest_price)
-            )
+        latest_price = parse_price_info(data[offset : offset + 32])
+        offset += 32
+
+        price_components.append(
+            PriceComponent(publisher_key, aggregate_price, latest_price)
+        )
+
+    # TODO(2023-07-31): Parse price_cumulative here if necessary;
+    # remember to re-check that this price account is v2 and adjust offset
 
     return PriceData(
         used_size,
