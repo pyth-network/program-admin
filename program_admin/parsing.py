@@ -124,23 +124,10 @@ def parse_price_data(data: bytes) -> PriceData:
 
     price_components = []
 
-    # PriceAccountV2 contains trailing data after the PriceComp
-    # array. We check how many items we may read before the trailing
-    # data starts.
-    max_components = (
-        PRICE_V1_COMP_COUNT
-        if used_size < PRICE_ACCOUNT_V2_SIZE
-        else PRICE_V2_COMP_COUNT
-    )
-
-    for _ in range(max_components):
+    for _ in range(components_count):
 
         publisher_key = PublicKey(data[offset : offset + 32])
         offset += 32
-
-        # Break on the first empty publisher slot
-        if publisher_key == PublicKey(bytes(32)):
-            break
 
         aggregate_price = parse_price_info(data[offset : offset + 32])
         offset += 32

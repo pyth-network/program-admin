@@ -1,6 +1,7 @@
 .envrc
 .mypy_cache
 __pycache__
+dist
 keys
 permissions.json
 products.json
