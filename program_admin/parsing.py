@@ -27,12 +27,7 @@ from program_admin.types import (
     ReferenceProduct,
     ReferencePublishers,
 )
-from program_admin.util import (
-    PRICE_ACCOUNT_V2_SIZE,
-    PRICE_V1_COMP_COUNT,
-    PRICE_V2_COMP_COUNT,
-    apply_overrides,
-)
+from program_admin.util import apply_overrides
 
 MAGIC_NUMBER = "0xa1b2c3d4"
 VERSION = 2
