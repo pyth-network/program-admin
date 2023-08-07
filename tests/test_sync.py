@@ -390,6 +390,7 @@ async def test_sync(
         authority_permissions_path=authority_permissions_json,
         overrides_path=empty_overrides_json,
         network=network,
+        allocate_price_v2=False,
         generate_keys=True,
     )
 
@@ -437,6 +438,7 @@ async def test_sync(
         authority_permissions_path=authority_permissions_json,
         overrides_path=empty_overrides_json,
         network=network,
+        allocate_price_v2=False,
         generate_keys=False,
     )
 
@@ -451,6 +453,7 @@ async def test_sync(
             authority_permissions_path=authority_permissions_json,
             overrides_path=empty_overrides_json,
             network=network,
+            allocate_price_v2=False,
             generate_keys=False,
         )
     except RuntimeError:
@@ -467,6 +470,7 @@ async def test_sync(
         authority_permissions_path=authority_permissions_json,
         overrides_path=localhost_overrides_json,
         network=network,
+        allocate_price_v2=False,
         generate_keys=False,
     )
 
@@ -497,6 +501,7 @@ async def sync_from_files(
     authority_permissions_path: str,
     overrides_path: str,
     network: Network,
+    allocate_price_v2: bool,
     send_transactions: bool = True,
     generate_keys: bool = False,
 ):
@@ -516,4 +521,5 @@ async def sync_from_files(
         ref_authority_permissions,
         send_transactions,
         generate_keys,
+        allocate_price_v2=allocate_price_v2,
     )

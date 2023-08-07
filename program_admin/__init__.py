@@ -36,7 +36,8 @@ from program_admin.types import (
 )
 from program_admin.util import (
     MAPPING_ACCOUNT_SIZE,
-    PRICE_ACCOUNT_SIZE,
+    PRICE_ACCOUNT_V1_SIZE,
+    PRICE_ACCOUNT_V2_SIZE,
     PRODUCT_ACCOUNT_SIZE,
     account_exists,
     compute_transaction_size,
@@ -228,6 +229,7 @@ class ProgramAdmin:
         ref_authority_permissions: Optional[ReferenceAuthorityPermissions],
         send_transactions: bool = True,
         generate_keys: bool = False,
+        allocate_price_v2: bool = True,
     ) -> List[TransactionInstruction]:
         instructions: List[TransactionInstruction] = []
 
@@ -261,7 +263,9 @@ class ProgramAdmin:
             (
                 product_instructions,
                 product_keypairs,
-            ) = await self.sync_product_instructions(ref_product, generate_keys)
+            ) = await self.sync_product_instructions(
+                ref_product, generate_keys, allocate_price_v2
+            )
 
             if product_instructions:
                 product_updates = True
@@ -361,6 +365,7 @@ class ProgramAdmin:
         self,
         product: ReferenceProduct,
         generate_keys: bool,
+        allocate_price_v2: bool,
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         instructions: List[TransactionInstruction] = []
         funding_keypair = load_keypair("funding", key_dir=self.key_dir)
@@ -423,16 +428,23 @@ class ProgramAdmin:
             logger.info(f"Creating new price account for {product['jump_symbol']}")
 
             if not await account_exists(self.rpc_endpoint, price_keypair.public_key):
-                logger.debug("Building system_program.create_account instruction")
+                price_alloc_size = (
+                    PRICE_ACCOUNT_V2_SIZE
+                    if allocate_price_v2
+                    else PRICE_ACCOUNT_V1_SIZE
+                )
+
+                logger.debug(
+                    f"Building system_program.create_account instruction (allocate_price_v2: {allocate_price_v2}, {price_alloc_size} bytes)"
+                )
+
                 instructions.append(
                     system_program.create_account(
                         system_program.CreateAccountParams(
                             from_pubkey=funding_keypair.public_key,
                             new_account_pubkey=price_keypair.public_key,
-                            lamports=await self.fetch_minimum_balance(
-                                PRICE_ACCOUNT_SIZE
-                            ),
-                            space=PRICE_ACCOUNT_SIZE,
+                            lamports=await self.fetch_minimum_balance(price_alloc_size),
+                            space=price_alloc_size,
                             program_id=self.program_key,
                         )
                     )
@@ -574,3 +586,59 @@ class ProgramAdmin:
             logger.debug("Existing authority permissions OK, not updating")
 
         return (instructions, signers)
+
+    async def resize_price_accounts_v2(
+        self,
+        security_authority_path: Path,
+        send_transactions: bool,
+    ):
+
+        security_authority: Optional[Keypair] = None
+        with open(security_authority_path, encoding="utf8") as file:
+            data = bytes(json.load(file))
+
+            security_authority = Keypair.from_secret_key(data)
+
+        if not security_authority:
+            raise RuntimeError("Could not load security authority keypair")
+
+        await self.refresh_program_accounts()
+
+        v1_prices = {}
+        v2_prices = {}
+        odd_size_prices = {}
+
+        for (pubkey, account) in self._price_accounts.items():
+            # IMPORTANT: sizes must be checked in descending order
+            if account.data.used_size >= PRICE_ACCOUNT_V2_SIZE:
+                logger.debug(f"Price account {pubkey} is v2")
+                v2_prices[pubkey] = account
+            elif account.data.used_size >= PRICE_ACCOUNT_V1_SIZE:
+                logger.debug(f"Price account {pubkey} is v1")
+                v1_prices[pubkey] = account
+            else:
+                logger.warning(
+                    f"Price account {pubkey} of {account.data.used_size} bytes does not match any known used size"
+                )
+                odd_size_prices[pubkey] = account
+
+        if len(v1_prices) > 0:
+            logger.info(f"Found {len(v1_prices)} v1 price account(s)")
+        if len(v2_prices) > 0:
+            logger.info(f"Found {len(v2_prices)} v2 price account(s)")
+        if len(odd_size_prices) > 0:
+            logger.info(f"Found {len(odd_size_prices)} unrecognized price accounts")
+
+        instructions = []
+        signers = [security_authority]
+
+        for (pubkey, account) in v1_prices.items():
+            logger.debug("Building pyth_program.resize_price_account instruction")
+
+            instruction = pyth_program.resize_price_account_v2(
+                self.program_key, security_authority.public_key, pubkey
+            )
+            instructions.append(instruction)
+
+        if send_transactions:
+            await self.send_transaction(instructions, signers)
