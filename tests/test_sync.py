@@ -78,6 +78,9 @@ def set_test_env_var():
 
 @pytest.fixture
 async def oracle():
+    """
+    Downloads the latest version of the oracle from the pyth-client repo
+    """
     api_url = "https://api.github.com/repos/pyth-network/pyth-client/releases/latest"
     filename = "pyth_oracle_pythnet.so"
     outfile = "tests/pyth_oracle.so"
