@@ -140,3 +140,11 @@ def get_actual_signers(
             actual_signers.append(signer)
 
     return actual_signers
+
+
+def get_permissions_account(program_key, seed):
+    [permissions_account, _bump] = PublicKey.find_program_address(
+        [seed],
+        program_key,
+    )
+    return permissions_account

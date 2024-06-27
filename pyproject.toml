@@ -20,8 +20,9 @@ python = "~3.10"
 solana = "^0.28.1"
 ujson = "^5.2.0"
 solders = "^0.10.0"
+requests = "^2.32.3"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 black = { version = "^22.3.0" }
 isort = { version = "^5.10.0" }
 ipython = "^8.2.0"
@@ -30,6 +31,7 @@ pylint = "^2.13.0"
 types-ujson = "^4.2.0"
 pytest = "^7.1.2"
 pytest-asyncio = "^0.18.3"
+types-requests = "^2.32.0.20240622"
 
 [tool.poetry.scripts]
 program-admin = "program_admin.cli:cli"

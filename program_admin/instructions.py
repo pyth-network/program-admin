@@ -6,7 +6,7 @@ from solana.system_program import SYS_PROGRAM_ID
 from solana.transaction import AccountMeta, TransactionInstruction
 
 from program_admin.types import ReferenceAuthorityPermissions
-from program_admin.util import encode_product_metadata
+from program_admin.util import encode_product_metadata, get_permissions_account
 
 # TODO: Implement add_mapping instruction
 
@@ -44,11 +44,16 @@ def init_mapping(
     layout = Struct("version" / Int32ul, "command" / Int32sl)
     data = layout.build(dict(version=PROGRAM_VERSION, command=COMMAND_INIT_MAPPING))
 
+    permissions_account = get_permissions_account(
+        program_key, AUTHORITY_PERMISSIONS_PDA_SEED
+    )
+
     return TransactionInstruction(
         data=data,
         keys=[
             AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=mapping_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=True),
         ],
         program_id=program_key,
     )
@@ -71,12 +76,17 @@ def add_product(
     layout = Struct("version" / Int32ul, "command" / Int32sl)
     data = layout.build(dict(version=PROGRAM_VERSION, command=COMMAND_ADD_PRODUCT))
 
+    permissions_account = get_permissions_account(
+        program_key, AUTHORITY_PERMISSIONS_PDA_SEED
+    )
+
     return TransactionInstruction(
         data=data,
         keys=[
             AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=mapping_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=new_product_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=True),
         ],
         program_id=program_key,
     )
@@ -124,11 +134,16 @@ def update_product(
     data = layout.build(dict(version=PROGRAM_VERSION, command=COMMAND_UPD_PRODUCT))
     data_extra = encode_product_metadata(product_metadata)
 
+    permissions_account = get_permissions_account(
+        program_key, AUTHORITY_PERMISSIONS_PDA_SEED
+    )
+
     return TransactionInstruction(
         data=data + data_extra,
         keys=[
             AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=product_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=True),
         ],
         program_id=program_key,
     )
@@ -162,12 +177,17 @@ def add_price(
         )
     )
 
+    permissions_account = get_permissions_account(
+        program_key, AUTHORITY_PERMISSIONS_PDA_SEED
+    )
+
     return TransactionInstruction(
         data=data,
         keys=[
             AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=product_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=new_price_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=True),
         ],
         program_id=program_key,
     )
@@ -222,11 +242,16 @@ def set_minimum_publishers(
         )
     )
 
+    permissions_account = get_permissions_account(
+        program_key, AUTHORITY_PERMISSIONS_PDA_SEED
+    )
+
     return TransactionInstruction(
         data=data,
         keys=[
             AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=price_account_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=True),
         ],
         program_id=program_key,
     )
@@ -257,11 +282,16 @@ def toggle_publisher(
         )
     )
 
+    permissions_account = get_permissions_account(
+        program_key, AUTHORITY_PERMISSIONS_PDA_SEED
+    )
+
     return TransactionInstruction(
         data=data,
         keys=[
             AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=price_account_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=True),
         ],
         program_id=program_key,
     )
@@ -306,9 +336,8 @@ def upd_permissions(
         )
     )
 
-    [permissions_account, _bump] = PublicKey.find_program_address(
-        [AUTHORITY_PERMISSIONS_PDA_SEED],
-        program_key,
+    permissions_account = get_permissions_account(
+        program_key, AUTHORITY_PERMISSIONS_PDA_SEED
     )
 
     # Under the BPF upgradeable loader, the program data key is a PDA

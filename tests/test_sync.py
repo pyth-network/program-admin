@@ -5,10 +5,12 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import pytest
+import requests
 import ujson as json
 from solana.publickey import PublicKey
 
 from program_admin import ProgramAdmin
+from program_admin.keys import load_keypair
 from program_admin.parsing import (
     parse_authority_permissions_json,
     parse_permissions_with_overrides,
@@ -66,17 +68,47 @@ ETH_USD = {
 }
 
 
-MASTER_AUTHORITY = "23CGbZq2AAzZcHk1vVBs9Zq4AkNJhjxRbjMiCFTy8vJP"
-DATA_CURATION_AUTHORITY = "33CGbZq2AAzZcHk1vVBs9Zq4AkNJhjxRbjMiCFTy8vJP"
-SECURITY_AUTHORITY = "43CGbZq2AAzZcHk1vVBs9Zq4AkNJhjxRbjMiCFTy8vJP"
-
-
 @pytest.fixture
 def set_test_env_var():
     """
     Sets an env required for program-admin sync() testing
     """
     os.environ["TEST_MODE"] = "1"
+
+
+@pytest.fixture
+async def oracle():
+    api_url = "https://api.github.com/repos/pyth-network/pyth-client/releases/latest"
+    filename = "pyth_oracle_pythnet.so"
+    outfile = "tests/pyth_oracle.so"
+
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()
+        release_info = response.json()
+
+        # Find the desired asset in the release assets
+        asset_url = None
+        for asset in release_info["assets"]:
+            if asset["name"] == filename:
+                asset_url = asset["browser_download_url"]
+                break
+
+        # Download the asset
+        download_response = requests.get(asset_url)
+        download_response.raise_for_status()
+
+        # Save the file to the specified path
+        with open(outfile, "wb") as file:
+            file.write(download_response.content)
+
+        LOGGER.debug(f"File {filename} downloaded successfully to {outfile}.")
+
+    except requests.exceptions.RequestException as e:
+        LOGGER.error(f"An error occurred: {e}")
+        raise e
+
+    yield outfile
 
 
 @pytest.fixture
@@ -152,22 +184,6 @@ def permissions2_json():
 
 
 @pytest.fixture
-def authority_permissions_json():
-    with NamedTemporaryFile() as jsonfile:
-        value = {
-            "master_authority": MASTER_AUTHORITY,
-            "data_curation_authority": DATA_CURATION_AUTHORITY,
-            "security_authority": SECURITY_AUTHORITY,
-        }
-
-        LOGGER.debug("Writing authority permissions JSON:\n%s", value)
-        jsonfile.write(json.dumps(value).encode())
-        jsonfile.flush()
-
-        yield jsonfile.name
-
-
-@pytest.fixture
 def empty_overrides_json():
     with NamedTemporaryFile() as jsonfile:
         jsonfile.write(
@@ -227,13 +243,31 @@ async def pyth_keypair(key_dir, validator):
         stdout, stderr = await process.communicate()
 
         if stdout:
-            print(f"[stdout]\n{stdout.decode()}")
+            LOGGER.debug(f"[stdout]\n{stdout.decode()}")
         if stderr:
-            print(f"[stderr]\n{stderr.decode()}")
+            LOGGER.debug(f"[stderr]\n{stderr.decode()}")
 
         raise RuntimeError("Failed to generate funding key")
 
     yield f"{key_dir}/funding.json"
+
+
+@pytest.fixture
+def authority_permissions_json(key_dir, pyth_keypair):
+    funding_keypair = load_keypair("funding", key_dir=key_dir)
+    funding_key = funding_keypair.public_key
+    with NamedTemporaryFile() as jsonfile:
+        value = {
+            "master_authority": str(funding_key),
+            "data_curation_authority": str(funding_key),
+            "security_authority": str(funding_key),
+        }
+
+        LOGGER.debug("Writing authority permissions JSON:\n%s", value)
+        jsonfile.write(json.dumps(value).encode())
+        jsonfile.flush()
+
+        yield jsonfile.name
 
 
 @pytest.fixture
@@ -252,9 +286,9 @@ async def upgrade_authority_keypair(key_dir, validator):
         stdout, stderr = await process.communicate()
 
         if stdout:
-            print(f"[stdout]\n{stdout.decode()}")
+            LOGGER.debug(f"[stdout]\n{stdout.decode()}")
         if stderr:
-            print(f"[stderr]\n{stderr.decode()}")
+            LOGGER.debug(f"[stderr]\n{stderr.decode()}")
 
         raise RuntimeError("Failed to generate upgrade authority key")
 
@@ -268,18 +302,18 @@ async def upgrade_authority_keypair(key_dir, validator):
     await process.wait()
 
     stdout, stderr = await process.communicate()
-    print(f"[cmd exited with {process.returncode}]")
+    LOGGER.debug(f"[cmd exited with {process.returncode}]")
     if stdout:
-        print(f"[stdout]\n{stdout.decode()}")
+        LOGGER.debug(f"[stdout]\n{stdout.decode()}")
     if stderr:
-        print(f"[stderr]\n{stderr.decode()}")
+        LOGGER.debug(f"[stderr]\n{stderr.decode()}")
 
     yield keypair_path
 
 
 # pylint: disable=redefined-outer-name,unused-argument
 @pytest.fixture
-async def pyth_program(pyth_keypair, upgrade_authority_keypair):
+async def pyth_program(pyth_keypair, upgrade_authority_keypair, oracle):
     process = await asyncio.create_subprocess_shell(
         f"solana airdrop 100 -k {pyth_keypair} -u localhost",
         stdout=asyncio.subprocess.PIPE,
@@ -289,18 +323,19 @@ async def pyth_program(pyth_keypair, upgrade_authority_keypair):
     await process.wait()
 
     stdout, stderr = await process.communicate()
-    print(f"[cmd exited with {process.returncode}]")
+    LOGGER.debug(f"[cmd exited with {process.returncode}]")
     if stdout:
-        print(f"[stdout]\n{stdout.decode()}")
+        LOGGER.debug(f"[stdout]\n{stdout.decode()}")
     if stderr:
-        print(f"[stderr]\n{stderr.decode()}")
+        LOGGER.debug(f"[stderr]\n{stderr.decode()}")
 
     process = await asyncio.create_subprocess_shell(
         f"solana program deploy \
         -k {pyth_keypair} \
         -u localhost \
         --upgrade-authority {upgrade_authority_keypair} \
-        tests/pyth_oracle.so",
+        {oracle} \
+        && sleep 10",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -308,11 +343,11 @@ async def pyth_program(pyth_keypair, upgrade_authority_keypair):
     await process.wait()
 
     stdout, stderr = await process.communicate()
-    print(f"[cmd exited with {process.returncode}]")
+    LOGGER.debug(f"[cmd exited with {process.returncode}]")
     if stdout:
-        print(f"[stdout]\n{stdout.decode()}")
+        LOGGER.debug(f"[stdout]\n{stdout.decode()}")
     if stderr:
-        print(f"[stderr]\n{stderr.decode()}")
+        LOGGER.debug(f"[stderr]\n{stderr.decode()}")
 
     _, _, program_id = stdout.decode("ascii").split()
 
@@ -373,6 +408,7 @@ async def test_sync(
     authority_permissions_json,
     empty_overrides_json,
     localhost_overrides_json,
+    pyth_keypair,
 ):
     network = "localhost"
     program_admin = ProgramAdmin(
@@ -390,7 +426,7 @@ async def test_sync(
         authority_permissions_path=authority_permissions_json,
         overrides_path=empty_overrides_json,
         network=network,
-        allocate_price_v2=False,
+        allocate_price_v2=True,
         generate_keys=True,
     )
 
@@ -411,9 +447,11 @@ async def test_sync(
     assert price_accounts[0].data.price_components[0].publisher_key == random_publisher
     assert price_accounts[1].data.price_components[0].publisher_key == random_publisher
 
-    assert str(authority_permissions.master_authority) == MASTER_AUTHORITY
-    assert str(authority_permissions.data_curation_authority) == DATA_CURATION_AUTHORITY
-    assert str(authority_permissions.security_authority) == SECURITY_AUTHORITY
+    funding_keypair = load_keypair("funding", key_dir=key_dir)
+    funding_key = funding_keypair.public_key
+    assert str(authority_permissions.master_authority) == str(funding_key)
+    assert str(authority_permissions.data_curation_authority) == str(funding_key)
+    assert str(authority_permissions.security_authority) == str(funding_key)
 
     # Map from symbol names to the corresponding price account
     symbol_price_account_map = {}
@@ -438,7 +476,7 @@ async def test_sync(
         authority_permissions_path=authority_permissions_json,
         overrides_path=empty_overrides_json,
         network=network,
-        allocate_price_v2=False,
+        allocate_price_v2=True,
         generate_keys=False,
     )
 
@@ -453,7 +491,7 @@ async def test_sync(
             authority_permissions_path=authority_permissions_json,
             overrides_path=empty_overrides_json,
             network=network,
-            allocate_price_v2=False,
+            allocate_price_v2=True,
             generate_keys=False,
         )
     except RuntimeError:
@@ -470,7 +508,7 @@ async def test_sync(
         authority_permissions_path=authority_permissions_json,
         overrides_path=localhost_overrides_json,
         network=network,
-        allocate_price_v2=False,
+        allocate_price_v2=True,
         generate_keys=False,
     )
 
