@@ -119,7 +119,7 @@ def set_minimum_publishers(funding_key, program_key, price_key, value, outfile):
 @click.option("--funding-key", help="Funding key", envvar="FUNDING_KEY")
 @click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
 @click.option("--product-key", help="Product account key", envvar="PRODUCT_KEY")
-@click.option("--metadata", help="Metadata to add to product", type=dict)
+@click.option("--metadata", help="Metadata to add to product", type=str)
 @click.option(
     "--outfile",
     help="File location to write instructions",
@@ -130,7 +130,9 @@ def update_product_metadata(funding_key, program_key, product_key, metadata, out
     funding = PublicKey(funding_key)
     program = PublicKey(program_key)
     product = PublicKey(product_key)
-    instruction = instructions.update_product(program, funding, product, metadata)
+    instruction = instructions.update_product(
+        program, funding, product, json.loads(metadata)
+    )
 
     instruction_output = json.dumps(
         [
@@ -448,12 +450,10 @@ def sync(
     ref_permissions = parse_permissions_with_overrides(
         Path(permissions), Path(overrides), network
     )
-    ref_authority_permissions = None
 
-    if authority_permissions:
-        ref_authority_permissions = parse_authority_permissions_json(
-            Path(authority_permissions)
-        )
+    ref_authority_permissions = parse_authority_permissions_json(
+        Path(authority_permissions)
+    )
 
     asyncio.run(
         program_admin.sync(

@@ -10,13 +10,13 @@ repos:
         entry: poetry run black .
         pass_filenames: false
         language: system
-      - id: mypy
-        name: mypy
-        entry: poetry run mypy program_admin/ tests/
+      - id: pyright
+        name: pyright
+        entry: poetry run pyright program_admin/ tests/
         pass_filenames: false
         language: system
-      - id: pylint
-        name: pylint
-        entry: poetry run pylint program_admin/ tests/
+      - id: pyflakes
+        name: pyflakes
+        entry: poetry run pyflakes program_admin/ tests/
         pass_filenames: false
         language: system

@@ -86,7 +86,7 @@ async def oracle():
     outfile = "tests/pyth_oracle.so"
 
     try:
-        response = requests.get(api_url)
+        response = requests.get(api_url, timeout=300)
         response.raise_for_status()
         release_info = response.json()
 
@@ -97,8 +97,11 @@ async def oracle():
                 asset_url = asset["browser_download_url"]
                 break
 
+        if not asset_url:
+            raise Exception(f"Unable to find asset URL for {filename}")
+
         # Download the asset
-        download_response = requests.get(asset_url)
+        download_response = requests.get(asset_url, timeout=300)
         download_response.raise_for_status()
 
         # Save the file to the specified path
@@ -107,9 +110,9 @@ async def oracle():
 
         LOGGER.debug(f"File {filename} downloaded successfully to {outfile}.")
 
-    except requests.exceptions.RequestException as e:
-        LOGGER.error(f"An error occurred: {e}")
-        raise e
+    except requests.exceptions.RequestException as error:
+        LOGGER.error(f"An error occurred: {error}")
+        raise error
 
     yield outfile
 
@@ -437,7 +440,11 @@ async def test_sync(
 
     product_accounts = list(program_admin._product_accounts.values())
     price_accounts = list(program_admin._price_accounts.values())
-    authority_permissions = program_admin.authority_permission_account.data
+    authority_permission_account = program_admin.authority_permission_account
+    if authority_permission_account:
+        authority_permissions = authority_permission_account.data
+    else:
+        raise Exception("Authority permissions not found")
 
     reference_symbols = ["Crypto.BTC/USD", "Equity.US.AAPL/USD"]
 

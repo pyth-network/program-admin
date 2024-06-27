@@ -1,9 +1,7 @@
 import json
 import os
-import sys
-from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Optional, Tuple
 
 from loguru import logger
 from solana import system_program
@@ -16,13 +14,7 @@ from solana.transaction import PACKET_DATA_SIZE, Transaction, TransactionInstruc
 
 from program_admin import instructions as pyth_program
 from program_admin.keys import load_keypair
-from program_admin.parsing import (
-    parse_account,
-    parse_overrides_json,
-    parse_permissions_json,
-    parse_products_json,
-    parse_publishers_json,
-)
+from program_admin.parsing import parse_account
 from program_admin.types import (
     Network,
     PythAuthorityPermissionAccount,
@@ -72,7 +64,7 @@ class ProgramAdmin:
         key_dir: str,
         program_key: str,
         commitment: Literal["confirmed", "finalized"],
-        rpc_endpoint: str = None,
+        rpc_endpoint: str = "",
     ):
         self.network = network
         self.rpc_endpoint = rpc_endpoint or RPC_ENDPOINTS[network]
@@ -223,7 +215,7 @@ class ProgramAdmin:
 
     async def sync(
         self,
-        ref_products: ReferenceProduct,
+        ref_products: Dict[str, ReferenceProduct],
         ref_publishers: ReferencePublishers,
         ref_permissions: ReferencePermissions,
         ref_authority_permissions: ReferenceAuthorityPermissions,
@@ -252,6 +244,10 @@ class ProgramAdmin:
                     await self.send_transaction(
                         authority_instructions, authority_signers
                     )
+        else:
+            logger.debug(
+                "Reference data for authority permissions is not defined, skipping..."
+            )
 
         # Sync mapping accounts
         mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions(
@@ -309,11 +305,6 @@ class ProgramAdmin:
                 instructions.extend(price_instructions)
                 if send_transactions:
                     await self.send_transaction(price_instructions, price_keypairs)
-
-        else:
-            logger.debug(
-                "Reference data for authority permissions is not defined, skipping..."
-            )
 
         return instructions
 

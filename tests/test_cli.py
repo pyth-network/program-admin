@@ -19,7 +19,7 @@ def test_minimum_publishers():
             "--price-key",
             "6bRsDGmuSfUCND9vZioUbWfB56dkrCqNE8f2DW7eNU5D",
             "--value",
-            20,
+            "20",
         ],
     )
     assert result.exit_code == 0
@@ -46,7 +46,7 @@ def test_toggle_publisher():
             "--publisher-key",
             "6bRsDGmuSfUCND9vZioUbWfB56dkrCqNE8f2DW7eNU5E",
             "--status",
-            True,
+            "true",
         ],
     )
 
@@ -72,7 +72,7 @@ def test_update_product():
             "--product-key",
             "6bRsDGmuSfUCND9vZioUbWfB56dkrCqNE8f2DW7eNU5D",
             "--metadata",
-            {"data": "meta"},
+            '{"data": "meta"}',
         ],
     )
     assert result.exit_code == 0
