@@ -228,26 +228,19 @@ class ProgramAdmin:
         # Fetch program accounts from the network
         await self.refresh_program_accounts()
 
-        if ref_authority_permissions:
-            # Sync authority permissions
-            (
-                authority_instructions,
-                authority_signers,
-            ) = await self.sync_authority_permissions_instructions(
-                ref_authority_permissions
-            )
+        # Sync authority permissions
+        (
+            authority_instructions,
+            authority_signers,
+        ) = await self.sync_authority_permissions_instructions(
+            ref_authority_permissions
+        )
 
-            if authority_instructions:
-                instructions.extend(authority_instructions)
+        if authority_instructions:
+            instructions.extend(authority_instructions)
 
-                if send_transactions:
-                    await self.send_transaction(
-                        authority_instructions, authority_signers
-                    )
-        else:
-            logger.debug(
-                "Reference data for authority permissions is not defined, skipping..."
-            )
+            if send_transactions:
+                await self.send_transaction(authority_instructions, authority_signers)
 
         # Sync mapping accounts
         mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions(
