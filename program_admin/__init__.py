@@ -1,9 +1,7 @@
 import json
 import os
-import sys
-from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Optional, Tuple
 
 from loguru import logger
 from solana import system_program
@@ -16,13 +14,7 @@ from solana.transaction import PACKET_DATA_SIZE, Transaction, TransactionInstruc
 
 from program_admin import instructions as pyth_program
 from program_admin.keys import load_keypair
-from program_admin.parsing import (
-    parse_account,
-    parse_overrides_json,
-    parse_permissions_json,
-    parse_products_json,
-    parse_publishers_json,
-)
+from program_admin.parsing import parse_account
 from program_admin.types import (
     Network,
     PythAuthorityPermissionAccount,
@@ -72,7 +64,7 @@ class ProgramAdmin:
         key_dir: str,
         program_key: str,
         commitment: Literal["confirmed", "finalized"],
-        rpc_endpoint: str = None,
+        rpc_endpoint: str = "",
     ):
         self.network = network
         self.rpc_endpoint = rpc_endpoint or RPC_ENDPOINTS[network]
@@ -223,10 +215,10 @@ class ProgramAdmin:
 
     async def sync(
         self,
-        ref_products: ReferenceProduct,
+        ref_products: Dict[str, ReferenceProduct],
         ref_publishers: ReferencePublishers,
         ref_permissions: ReferencePermissions,
-        ref_authority_permissions: Optional[ReferenceAuthorityPermissions],
+        ref_authority_permissions: ReferenceAuthorityPermissions,
         send_transactions: bool = True,
         generate_keys: bool = False,
         allocate_price_v2: bool = True,
@@ -235,6 +227,20 @@ class ProgramAdmin:
 
         # Fetch program accounts from the network
         await self.refresh_program_accounts()
+
+        # Sync authority permissions
+        (
+            authority_instructions,
+            authority_signers,
+        ) = await self.sync_authority_permissions_instructions(
+            ref_authority_permissions
+        )
+
+        if authority_instructions:
+            instructions.extend(authority_instructions)
+
+            if send_transactions:
+                await self.send_transaction(authority_instructions, authority_signers)
 
         # Sync mapping accounts
         mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions(
@@ -292,28 +298,6 @@ class ProgramAdmin:
                 instructions.extend(price_instructions)
                 if send_transactions:
                     await self.send_transaction(price_instructions, price_keypairs)
-
-        if ref_authority_permissions:
-            # Sync authority permissions
-            (
-                authority_instructions,
-                authority_signers,
-            ) = await self.sync_authority_permissions_instructions(
-                ref_authority_permissions
-            )
-
-            if authority_instructions:
-                instructions.extend(authority_instructions)
-
-                if send_transactions:
-                    await self.send_transaction(
-                        authority_instructions, authority_signers
-                    )
-
-        else:
-            logger.debug(
-                "Reference data for authority permissions is not defined, skipping..."
-            )
 
         return instructions
 

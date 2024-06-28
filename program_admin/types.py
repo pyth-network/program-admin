@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Literal, Optional, TypedDict, Union
+from typing import Dict, Generic, List, Literal, Optional, TypedDict, TypeVar, Union
 
 from solana.publickey import PublicKey
 
@@ -130,35 +130,37 @@ class AuthorityPermissionData:
 
 AccountData = Union[MappingData, ProductData, PriceData, AuthorityPermissionData]
 
+T = TypeVar("T", bound=AccountData)
+
 
 @dataclass
-class PythAccount:
+class PythAccount(Generic[T]):
     public_key: PublicKey
     owner: PublicKey
     lamports: int
-    data: AccountData
+    data: T
 
     def __str__(self) -> str:
         return f"PythAccount(key={str(self.public_key)[0:5]}..., data={self.data})"
 
 
 @dataclass
-class PythMappingAccount(PythAccount):
+class PythMappingAccount(PythAccount[MappingData]):
     data: MappingData
 
 
 @dataclass
-class PythProductAccount(PythAccount):
+class PythProductAccount(PythAccount[ProductData]):
     data: ProductData
 
 
 @dataclass
-class PythPriceAccount(PythAccount):
+class PythPriceAccount(PythAccount[PriceData]):
     data: PriceData
 
 
 @dataclass
-class PythAuthorityPermissionAccount(PythAccount):
+class PythAuthorityPermissionAccount(PythAccount[AuthorityPermissionData]):
     """
     On-chain authorities permissions account.
 

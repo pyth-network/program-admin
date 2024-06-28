@@ -3,10 +3,12 @@
 __pycache__
 dist
 keys
+pyth_oracle.so
 permissions.json
 products.json
 publishers.json
 test-ledger
+.tool-versions
 
 # IntelliJ files
 .idea
