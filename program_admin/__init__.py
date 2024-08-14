@@ -1,7 +1,9 @@
+from asyncio import Future
+import asyncio
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Any, Coroutine, Dict, List, Literal, Optional, Tuple
 
 from loguru import logger
 from solana import system_program
@@ -260,6 +262,8 @@ class ProgramAdmin:
 
         # Sync product/price accounts
 
+        transactions: list[Coroutine[Any, Any, None]] = []
+
         product_updates: bool = False
 
         for jump_symbol, _price_account_map in ref_permissions.items():
@@ -278,12 +282,17 @@ class ProgramAdmin:
 
                 instructions.extend(product_instructions)
                 if send_transactions:
-                    await self.send_transaction(product_instructions, product_keypairs)
+                    transactions.append(self.send_transaction(product_instructions, product_keypairs))
+
+        await asyncio.gather(*transactions)
 
         if product_updates:
             await self.refresh_program_accounts()
 
         # Sync publishers
+
+        transactions = []
+
         for jump_symbol, _price_account_map in ref_permissions.items():
             ref_product = ref_products[jump_symbol]  # type: ignore
 
@@ -297,7 +306,9 @@ class ProgramAdmin:
             if price_instructions:
                 instructions.extend(price_instructions)
                 if send_transactions:
-                    await self.send_transaction(price_instructions, price_keypairs)
+                    transactions.append(self.send_transaction(price_instructions, price_keypairs))
+
+        await asyncio.gather(*transactions)
 
         return instructions
 
