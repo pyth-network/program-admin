@@ -1,4 +1,3 @@
-from asyncio import Future
 import asyncio
 import json
 import os
@@ -282,7 +281,9 @@ class ProgramAdmin:
 
                 instructions.extend(product_instructions)
                 if send_transactions:
-                    transactions.append(self.send_transaction(product_instructions, product_keypairs))
+                    transactions.append(
+                        self.send_transaction(product_instructions, product_keypairs)
+                    )
 
         await asyncio.gather(*transactions)
 
@@ -306,7 +307,9 @@ class ProgramAdmin:
             if price_instructions:
                 instructions.extend(price_instructions)
                 if send_transactions:
-                    transactions.append(self.send_transaction(price_instructions, price_keypairs))
+                    transactions.append(
+                        self.send_transaction(price_instructions, price_keypairs)
+                    )
 
         await asyncio.gather(*transactions)
 
