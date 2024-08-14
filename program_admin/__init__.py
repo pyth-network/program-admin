@@ -283,7 +283,8 @@ class ProgramAdmin:
                 if send_transactions:
                     transactions.append(
                         asyncio.create_task(
-                            self.send_transaction(product_instructions, product_keypairs)
+                            self.send_transaction(
+                                product_instructions, product_keypairs)
                         )
                     )
 
@@ -311,7 +312,9 @@ class ProgramAdmin:
                 if send_transactions:
                     transactions.append(
                         asyncio.create_task(
-                            self.send_transaction(price_instructions, price_keypairs)
+                            self.send_transaction(
+                                price_instructions, price_keypairs
+                            )
                         )
                     )
 
