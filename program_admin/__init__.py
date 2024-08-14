@@ -261,7 +261,7 @@ class ProgramAdmin:
 
         # Sync product/price accounts
 
-        transactions: list[Coroutine[Any, Any, None]] = []
+        transactions: List[asyncio.Task[None]] = []
 
         product_updates: bool = False
 
@@ -282,7 +282,9 @@ class ProgramAdmin:
                 instructions.extend(product_instructions)
                 if send_transactions:
                     transactions.append(
-                        self.send_transaction(product_instructions, product_keypairs)
+                        asyncio.create_task(
+                            self.send_transaction(product_instructions, product_keypairs)
+                        )
                     )
 
         await asyncio.gather(*transactions)
@@ -308,7 +310,9 @@ class ProgramAdmin:
                 instructions.extend(price_instructions)
                 if send_transactions:
                     transactions.append(
-                        self.send_transaction(price_instructions, price_keypairs)
+                        asyncio.create_task(
+                            self.send_transaction(price_instructions, price_keypairs)
+                        )
                     )
 
         await asyncio.gather(*transactions)
