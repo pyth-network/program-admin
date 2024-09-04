@@ -1,5 +1,6 @@
 import asyncio
 import json
+import math
 import os
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple
@@ -246,8 +247,10 @@ class ProgramAdmin:
                 await self.send_transaction(authority_instructions, authority_signers)
 
         # Sync mapping accounts
+
+        num_desired_mapping_accounts = math.ceil(len(ref_products) / 640)
         mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions(
-            generate_keys
+            generate_keys, num_desired_mapping_accounts
         )
 
         if mapping_instructions:
@@ -256,10 +259,6 @@ class ProgramAdmin:
                 await self.send_transaction(mapping_instructions, mapping_keypairs)
 
             await self.refresh_program_accounts()
-
-        # FIXME: We should check if the mapping account has enough space to
-        # add/remove new products. That is not urgent because we are around 10%
-        # of the first mapping account capacity.
 
         # Sync product/price accounts
 
@@ -336,26 +335,31 @@ class ProgramAdmin:
     async def sync_mapping_instructions(
         self,
         generate_keys: bool,
+        num_desired_accounts: int = 1,
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
-        mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
         funding_keypair = load_keypair("funding", key_dir=self.key_dir)
-        mapping_0_keypair = load_keypair(
-            "mapping_0", key_dir=self.key_dir, generate=generate_keys
-        )
+
+        mapping_keypairs: List[Keypair] = []
+        for n in range(0, num_desired_accounts):
+            mapping_keypairs.append(
+                load_keypair(
+                    f"mapping_{n}", key_dir=self.key_dir, generate=generate_keys
+                )
+            )
+
         instructions: List[TransactionInstruction] = []
 
-        if not mapping_chain:
-            logger.info("Creating new mapping account")
+        for mapping_keypair in mapping_keypairs:
 
             if not (
-                await account_exists(self.rpc_endpoint, mapping_0_keypair.public_key)
+                await account_exists(self.rpc_endpoint, mapping_keypair.public_key)
             ):
                 logger.debug("Building system.program.create_account instruction")
                 instructions.append(
                     system_program.create_account(
                         system_program.CreateAccountParams(
                             from_pubkey=funding_keypair.public_key,
-                            new_account_pubkey=mapping_0_keypair.public_key,
+                            new_account_pubkey=mapping_keypair.public_key,
                             # FIXME: Change to minimum rent-exempt amount
                             lamports=await self.fetch_minimum_balance(
                                 MAPPING_ACCOUNT_SIZE
@@ -371,11 +375,11 @@ class ProgramAdmin:
                 pyth_program.init_mapping(
                     self.program_key,
                     funding_keypair.public_key,
-                    mapping_0_keypair.public_key,
+                    mapping_keypair.public_key,
                 )
             )
 
-        return (instructions, [funding_keypair, mapping_0_keypair])
+        return (instructions, [funding_keypair] + mapping_keypairs)
 
     async def sync_product_instructions(
         self,
