@@ -80,7 +80,7 @@ ARG APP_PATH
 
 # Install Solana CLI, we redo this step because this Docker target
 # starts from scratch without the earlier Solana installation
-RUN sh -c "$(curl -sSfL https://release.solana.com/v1.14.17/install"
+RUN sh -c "$(curl -sSfL https://release.solana.com/v1.14.17/install)"
 ENV PATH=$PATH:/root/.local/share/solana/install/active_release/bin
 
 ENV \
