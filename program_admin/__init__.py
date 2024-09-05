@@ -342,75 +342,78 @@ class ProgramAdmin:
         mapping_keypair_0 = load_keypair(
             "mapping_0", key_dir=self.key_dir, generate=generate_keys
         )
-        logger.debug(f"mapping_0 public key: {mapping_keypair_0.public_key}")
 
         instructions: List[TransactionInstruction] = []
 
-        if not await account_exists(self.rpc_endpoint, mapping_keypair_0.public_key):
-            logger.debug("Building system.program.create_account instruction")
-            instructions.append(
-                system_program.create_account(
-                    system_program.CreateAccountParams(
-                        from_pubkey=funding_keypair.public_key,
-                        new_account_pubkey=mapping_keypair_0.public_key,
-                        # FIXME: Change to minimum rent-exempt amount
-                        lamports=await self.fetch_minimum_balance(MAPPING_ACCOUNT_SIZE),
-                        space=MAPPING_ACCOUNT_SIZE,
-                        program_id=self.program_key,
-                    )
-                )
-            )
-
-        logger.debug("Building pyth_program.init_mapping instruction")
-        instructions.append(
-            pyth_program.init_mapping(
-                self.program_key,
-                funding_keypair.public_key,
-                mapping_keypair_0.public_key,
-            )
-        )
-
-        mapping_keypairs: List[Keypair] = []
-        if num_mapping_accounts > 1:
-            mapping_keypairs: List[Keypair] = [
-                load_keypair(
-                    f"mapping_{n}", key_dir=self.key_dir, generate=generate_keys
-                )
-                for n in range(1, num_mapping_accounts)
-            ]
-
-        tail_mapping_keypair = mapping_keypair_0
-        for mapping_keypair in mapping_keypairs:
-            if not (
-                await account_exists(self.rpc_endpoint, mapping_keypair.public_key)
-            ):
+        # Create initial mapping account
+        if len(self._mapping_accounts) < 1:
+            if not await account_exists(self.rpc_endpoint, mapping_keypair_0.public_key):
                 logger.debug("Building system.program.create_account instruction")
                 instructions.append(
                     system_program.create_account(
                         system_program.CreateAccountParams(
                             from_pubkey=funding_keypair.public_key,
-                            new_account_pubkey=mapping_keypair.public_key,
+                            new_account_pubkey=mapping_keypair_0.public_key,
                             # FIXME: Change to minimum rent-exempt amount
-                            lamports=await self.fetch_minimum_balance(
-                                MAPPING_ACCOUNT_SIZE
-                            ),
+                            lamports=await self.fetch_minimum_balance(MAPPING_ACCOUNT_SIZE),
                             space=MAPPING_ACCOUNT_SIZE,
                             program_id=self.program_key,
                         )
                     )
                 )
 
-            logger.debug("Building pyth_program.add_mapping instruction")
+            logger.debug("Building pyth_program.init_mapping instruction")
             instructions.append(
-                pyth_program.add_mapping(
+                pyth_program.init_mapping(
                     self.program_key,
                     funding_keypair.public_key,
-                    tail_mapping_keypair.public_key,
-                    mapping_keypair.public_key,
+                    mapping_keypair_0.public_key,
                 )
             )
 
-            tail_mapping_keypair = mapping_keypair
+        # Add extra mapping accounts
+        if len(self._mapping_accounts) < num_mapping_accounts:
+            mapping_keypairs: List[Keypair] = []
+            if num_mapping_accounts > 1:
+                mapping_keypairs: List[Keypair] = [
+                    load_keypair(
+                        f"mapping_{n}", key_dir=self.key_dir, generate=generate_keys
+                    )
+                    for n in range(1, num_mapping_accounts)
+                ]
+
+            tail_mapping_keypair = mapping_keypair_0
+            for mapping_keypair in mapping_keypairs:
+                if not (
+                    await account_exists(self.rpc_endpoint, mapping_keypair.public_key)
+                ):
+                    logger.debug("Building system.program.create_account instruction")
+                    instructions.append(
+                        system_program.create_account(
+                            system_program.CreateAccountParams(
+                                from_pubkey=funding_keypair.public_key,
+                                new_account_pubkey=mapping_keypair.public_key,
+                                # FIXME: Change to minimum rent-exempt amount
+                                lamports=await self.fetch_minimum_balance(
+                                    MAPPING_ACCOUNT_SIZE
+                                ),
+                                space=MAPPING_ACCOUNT_SIZE,
+                                program_id=self.program_key,
+                            )
+                        )
+                    )
+
+                logger.debug("Building pyth_program.add_mapping instruction")
+                instructions.append(
+                    pyth_program.add_mapping(
+                        self.program_key,
+                        funding_keypair.public_key,
+                        tail_mapping_keypair.public_key,
+                        mapping_keypair.public_key,
+                    )
+                )
+
+                tail_mapping_keypair = mapping_keypair
 
         return (instructions, [funding_keypair, mapping_keypair_0] + mapping_keypairs)
 
