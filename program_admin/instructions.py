@@ -73,7 +73,7 @@ def add_mapping(
     - mapping account (signer, writable)
     """
     layout = Struct("version" / Int32ul, "command" / Int32sl)
-    data = layout.build(dict(version=PROGRAM_VERSION, command=COMMAND_INIT_MAPPING))
+    data = layout.build(dict(version=PROGRAM_VERSION, command=COMMAND_ADD_MAPPING))
 
     permissions_account = get_permissions_account(
         program_key, AUTHORITY_PERMISSIONS_PDA_SEED
