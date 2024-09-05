@@ -400,7 +400,7 @@ class ProgramAdmin:
                     )
                 )
 
-            logger.debug("Building pyth_program.init_mapping instruction")
+            logger.debug("Building pyth_program.add_mapping instruction")
             instructions.append(
                 pyth_program.add_mapping(
                     self.program_key,
