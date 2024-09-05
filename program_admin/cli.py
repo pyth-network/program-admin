@@ -56,6 +56,7 @@ def delete_price(network, rpc_endpoint, program_key, keys, commitment, product, 
         rpc_endpoint=rpc_endpoint,
         key_dir=keys,
         program_key=program_key,
+        publisher_program_key=None,
         commitment=commitment,
     )
     funding_keypair = load_keypair("funding", key_dir=keys)
@@ -236,6 +237,7 @@ def delete_product(
         rpc_endpoint=rpc_endpoint,
         key_dir=keys,
         program_key=program_key,
+        publisher_program_key=None,
         commitment=commitment,
     )
     funding_keypair = load_keypair("funding", key_dir=keys)
@@ -275,6 +277,7 @@ def list_accounts(network, rpc_endpoint, program_key, keys, publishers, commitme
         rpc_endpoint=rpc_endpoint,
         key_dir=keys,
         program_key=program_key,
+        publisher_program_key=None,
         commitment=commitment,
     )
 
@@ -333,6 +336,7 @@ def restore_links(network, rpc_endpoint, program_key, keys, products, commitment
         rpc_endpoint=rpc_endpoint,
         key_dir=keys,
         program_key=program_key,
+        publisher_program_key=None,
         commitment=commitment,
     )
     reference_products = parse_products_json(Path(products))
@@ -382,6 +386,12 @@ def restore_links(network, rpc_endpoint, program_key, keys, products, commitment
 @click.option("--network", help="Solana network", envvar="NETWORK")
 @click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
 @click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
+@click.option(
+    "--publisher-program-key",
+    help="Publisher program key",
+    envvar="PUBLISHER_PROGRAM_KEY",
+    default=None,
+)
 @click.option("--keys", help="Path to keys directory", envvar="KEYS")
 @click.option("--products", help="Path to reference products file", envvar="PRODUCTS")
 @click.option(
@@ -426,6 +436,7 @@ def sync(
     network,
     rpc_endpoint,
     program_key,
+    publisher_program_key,
     keys,
     products,
     publishers,
@@ -442,6 +453,7 @@ def sync(
         rpc_endpoint=rpc_endpoint,
         key_dir=keys,
         program_key=program_key,
+        publisher_program_key=publisher_program_key,
         commitment=commitment,
     )
 
@@ -495,6 +507,7 @@ def migrate_upgrade_authority(
         rpc_endpoint=rpc_endpoint,
         key_dir=keys,
         program_key=program_key,
+        publisher_program_key=None,
         commitment=commitment,
     )
     funding_keypair = load_keypair("funding", key_dir=keys)
@@ -544,6 +557,7 @@ def resize_price_accounts_v2(
         rpc_endpoint=rpc_endpoint,
         key_dir=keys,
         program_key=program_key,
+        publisher_program_key=None,
         commitment=commitment,
     )
 
