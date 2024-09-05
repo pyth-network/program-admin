@@ -73,10 +73,15 @@ def create_buffer_account(
     space: int,
     lamports: int,
 ) -> Tuple[PublicKey, TransactionInstruction]:
-    # The seed should be str but later is used in rust as
-    # &str and therefore we use latin1 encoding to map byte
-    # i to char i
-    seed = bytes(publisher_pubkey).decode("latin-1")
+    # Since the string representation of the PublicKey is 44 bytes long (base58 encoded)
+    # and we use 32 bytes of it, the chances of collision are very low.
+    #
+    # The seed has a max length of 32 and although the publisher_pubkey is 32 bytes,
+    # it is impossible to convert it to a string with a length of 32 that the
+    # underlying library (solders) can handle. We don't know exactly why, but it
+    # seems to be related to str -> &str conversion in pyo3 that solders uses to
+    # interact with the Rust implementation of the logic.
+    seed = str(publisher_pubkey)[:32]
     new_account_pubkey = PublicKey.create_with_seed(
         base_pubkey,
         seed,
