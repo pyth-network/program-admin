@@ -21,7 +21,7 @@ from program_admin.types import Network, ReferenceOverrides, ReferencePermission
 from program_admin.util import apply_overrides
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.getLevelNamesMapping()[os.getenv("LOG_LEVEL", "INFO")])
+LOGGER.setLevel(logging.getLevelName(os.getenv("LOG_LEVEL", "INFO").upper()))
 
 BTC_USD = {
     "account": "",

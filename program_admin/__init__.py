@@ -30,12 +30,14 @@ from program_admin.types import (
 )
 from program_admin.util import (
     MAPPING_ACCOUNT_SIZE,
+    MAPPING_ACCOUNT_PRODUCT_LIMIT,
     PRICE_ACCOUNT_V1_SIZE,
     PRICE_ACCOUNT_V2_SIZE,
     PRODUCT_ACCOUNT_SIZE,
     account_exists,
     compute_transaction_size,
     get_actual_signers,
+    get_available_mapping_account_key,
     recent_blockhash,
     sort_mapping_account_keys,
 )
@@ -248,9 +250,10 @@ class ProgramAdmin:
 
         # Sync mapping accounts
 
-        num_desired_mapping_accounts = math.ceil(len(ref_products) / 640)
+        # Create all the mapping accounts we need for the the number of product accounts
+        num_mapping_accounts = math.ceil(len(ref_products) / MAPPING_ACCOUNT_PRODUCT_LIMIT)
         mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions(
-            generate_keys, num_desired_mapping_accounts
+            generate_keys, num_mapping_accounts
         )
 
         if mapping_instructions:
@@ -333,24 +336,51 @@ class ProgramAdmin:
         return instructions
 
     async def sync_mapping_instructions(
-        self,
-        generate_keys: bool,
-        num_desired_accounts: int = 1,
+        self, generate_keys: bool, num_mapping_accounts: int = 1
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         funding_keypair = load_keypair("funding", key_dir=self.key_dir)
-
-        mapping_keypairs: List[Keypair] = []
-        for n in range(0, num_desired_accounts):
-            mapping_keypairs.append(
-                load_keypair(
-                    f"mapping_{n}", key_dir=self.key_dir, generate=generate_keys
-                )
-            )
+        mapping_keypair_0 = load_keypair(
+            "mapping_0", key_dir=self.key_dir, generate=generate_keys
+        )
+        logger.debug(f"mapping_0 public key: {mapping_keypair_0.public_key}")
 
         instructions: List[TransactionInstruction] = []
 
-        for mapping_keypair in mapping_keypairs:
+        if not await account_exists(self.rpc_endpoint, mapping_keypair_0.public_key):
+            logger.debug("Building system.program.create_account instruction")
+            instructions.append(
+                system_program.create_account(
+                    system_program.CreateAccountParams(
+                        from_pubkey=funding_keypair.public_key,
+                        new_account_pubkey=mapping_keypair_0.public_key,
+                        # FIXME: Change to minimum rent-exempt amount
+                        lamports=await self.fetch_minimum_balance(MAPPING_ACCOUNT_SIZE),
+                        space=MAPPING_ACCOUNT_SIZE,
+                        program_id=self.program_key,
+                    )
+                )
+            )
 
+            logger.debug("Building pyth_program.init_mapping instruction")
+            instructions.append(
+                pyth_program.init_mapping(
+                    self.program_key,
+                    funding_keypair.public_key,
+                    mapping_keypair_0.public_key,
+                )
+            )
+
+        mapping_keypairs: List[Keypair] = []
+        if num_mapping_accounts > 1:
+            mapping_keypairs: List[Keypair] = [
+                load_keypair(
+                    f"mapping_{n}", key_dir=self.key_dir, generate=generate_keys
+                )
+                for n in range(1, num_mapping_accounts)
+            ]
+
+        tail_mapping_keypair = mapping_keypair_0
+        for mapping_keypair in mapping_keypairs:
             if not (
                 await account_exists(self.rpc_endpoint, mapping_keypair.public_key)
             ):
@@ -372,14 +402,17 @@ class ProgramAdmin:
 
             logger.debug("Building pyth_program.init_mapping instruction")
             instructions.append(
-                pyth_program.init_mapping(
+                pyth_program.add_mapping(
                     self.program_key,
                     funding_keypair.public_key,
+                    tail_mapping_keypair.public_key,
                     mapping_keypair.public_key,
                 )
             )
 
-        return (instructions, [funding_keypair] + mapping_keypairs)
+            tail_mapping_keypair = mapping_keypair
+
+        return (instructions, [funding_keypair, mapping_keypair_0] + mapping_keypairs)
 
     async def sync_product_instructions(
         self,
@@ -389,8 +422,10 @@ class ProgramAdmin:
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
         instructions: List[TransactionInstruction] = []
         funding_keypair = load_keypair("funding", key_dir=self.key_dir)
-        mapping_chain = sort_mapping_account_keys(list(self._mapping_accounts.values()))
-        mapping_keypair = load_keypair(mapping_chain[-1], key_dir=self.key_dir)
+        mapping_keypair = load_keypair(
+            get_available_mapping_account_key(list(self._mapping_accounts.values())),
+            key_dir=self.key_dir,
+        )
         product_keypair = load_keypair(
             f"product_{product['jump_symbol']}",
             key_dir=self.key_dir,
