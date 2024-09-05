@@ -361,14 +361,14 @@ class ProgramAdmin:
                 )
             )
 
-            logger.debug("Building pyth_program.init_mapping instruction")
-            instructions.append(
-                pyth_program.init_mapping(
-                    self.program_key,
-                    funding_keypair.public_key,
-                    mapping_keypair_0.public_key,
-                )
+        logger.debug("Building pyth_program.init_mapping instruction")
+        instructions.append(
+            pyth_program.init_mapping(
+                self.program_key,
+                funding_keypair.public_key,
+                mapping_keypair_0.public_key,
             )
+        )
 
         mapping_keypairs: List[Keypair] = []
         if num_mapping_accounts > 1:
