@@ -83,9 +83,6 @@ def create_buffer_account(
         program_key,
     )
 
-    # space = 100048 # Required space to store 5000 price updates
-    # lamport =
-
     return (
         new_account_pubkey,
         system_program.create_account_with_seed(
