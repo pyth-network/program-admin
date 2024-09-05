@@ -29,8 +29,8 @@ from program_admin.types import (
     ReferencePublishers,
 )
 from program_admin.util import (
-    MAPPING_ACCOUNT_SIZE,
     MAPPING_ACCOUNT_PRODUCT_LIMIT,
+    MAPPING_ACCOUNT_SIZE,
     PRICE_ACCOUNT_V1_SIZE,
     PRICE_ACCOUNT_V2_SIZE,
     PRODUCT_ACCOUNT_SIZE,
@@ -251,7 +251,9 @@ class ProgramAdmin:
         # Sync mapping accounts
 
         # Create all the mapping accounts we need for the the number of product accounts
-        num_mapping_accounts = math.ceil(len(ref_products) / MAPPING_ACCOUNT_PRODUCT_LIMIT)
+        num_mapping_accounts = math.ceil(
+            len(ref_products) / MAPPING_ACCOUNT_PRODUCT_LIMIT
+        )
         mapping_instructions, mapping_keypairs = await self.sync_mapping_instructions(
             generate_keys, num_mapping_accounts
         )
@@ -347,7 +349,9 @@ class ProgramAdmin:
 
         # Create initial mapping account
         if len(self._mapping_accounts) < 1:
-            if not await account_exists(self.rpc_endpoint, mapping_keypair_0.public_key):
+            if not await account_exists(
+                self.rpc_endpoint, mapping_keypair_0.public_key
+            ):
                 logger.debug("Building system.program.create_account instruction")
                 instructions.append(
                     system_program.create_account(
@@ -355,7 +359,9 @@ class ProgramAdmin:
                             from_pubkey=funding_keypair.public_key,
                             new_account_pubkey=mapping_keypair_0.public_key,
                             # FIXME: Change to minimum rent-exempt amount
-                            lamports=await self.fetch_minimum_balance(MAPPING_ACCOUNT_SIZE),
+                            lamports=await self.fetch_minimum_balance(
+                                MAPPING_ACCOUNT_SIZE
+                            ),
                             space=MAPPING_ACCOUNT_SIZE,
                             program_id=self.program_key,
                         )
@@ -372,8 +378,8 @@ class ProgramAdmin:
             )
 
         # Add extra mapping accounts
+        mapping_keypairs: List[Keypair] = []
         if len(self._mapping_accounts) < num_mapping_accounts:
-            mapping_keypairs: List[Keypair] = []
             if num_mapping_accounts > 1:
                 mapping_keypairs: List[Keypair] = [
                     load_keypair(
