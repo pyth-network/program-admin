@@ -103,6 +103,26 @@ def sort_mapping_account_keys(accounts: List[PythMappingAccount]) -> List[Public
     return sorted_keys
 
 
+def get_available_mapping_account_key(
+    mapping_accounts: List[PythMappingAccount],
+) -> PublicKey:
+    """
+    Returns the first non-full mapping account.
+    """
+    # Create a dictionary with account key as key and product count as value
+    num_products_by_key = {
+        account.public_key: account.data.product_count for account in mapping_accounts
+    }
+
+    sorted_keys = sort_mapping_account_keys(mapping_accounts)
+
+    for key in sorted_keys:
+        if num_products_by_key[key] < MAPPING_ACCOUNT_PRODUCT_LIMIT:
+            return key
+
+    raise RuntimeError("All mapping accounts are full")
+
+
 def apply_overrides(
     ref_permissions: ReferencePermissions,
     ref_overrides: ReferenceOverrides,

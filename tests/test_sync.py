@@ -21,6 +21,7 @@ from program_admin.types import Network, ReferenceOverrides, ReferencePermission
 from program_admin.util import apply_overrides
 
 LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.getLevelName(os.getenv("LOG_LEVEL", "INFO").upper()))
 
 BTC_USD = {
     "account": "",
@@ -221,7 +222,7 @@ def localhost_overrides_json():
 @pytest.fixture
 async def validator():
     process = await asyncio.create_subprocess_shell(
-        "solana-test-validator",
+        "solana-test-validator --reset",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
