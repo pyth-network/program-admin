@@ -73,8 +73,10 @@ def create_buffer_account(
     space: int,
     lamports: int,
 ) -> Tuple[PublicKey, TransactionInstruction]:
-
-    seed = str(publisher_pubkey)
+    # The seed should be str but later is used in rust as
+    # &str and therefore we use latin1 encoding to map byte
+    # i to char i
+    seed = bytes(publisher_pubkey).decode("latin-1")
     new_account_pubkey = PublicKey.create_with_seed(
         base_pubkey,
         seed,
