@@ -155,7 +155,7 @@ def initialize_publisher_config(
             AccountMeta(pubkey=authority, is_signer=True, is_writable=True),
             AccountMeta(pubkey=config_account, is_signer=False, is_writable=True),
             AccountMeta(
-                pubkey=publisher_config_account, is_signer=False, is_writable=True
+                pubkey=publisher_config_account, is_signer=False, is_writable=False
             ),
             AccountMeta(pubkey=buffer_account, is_signer=False, is_writable=True),
             AccountMeta(pubkey=SYS_PROGRAM_ID, is_signer=False, is_writable=False),
