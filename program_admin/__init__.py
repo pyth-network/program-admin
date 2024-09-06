@@ -327,6 +327,8 @@ class ProgramAdmin:
             publisher_program_signers,
         ) = await self.sync_publisher_program(ref_publishers)
 
+        logger.debug(f"Syncing publisher program - {len(publisher_program_instructions)} instructions")
+
         if publisher_program_instructions:
             instructions.extend(publisher_program_instructions)
             if send_transactions:

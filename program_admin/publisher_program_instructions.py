@@ -44,12 +44,14 @@ def initialize_publisher_program(
     )
 
     ix_data_layout = Struct(
+        "instruction_id" / Int8ul,
         "bump" / Int8ul,
         "authority" / Bytes(32),
     )
 
     ix_data = ix_data_layout.build(
         dict(
+            instruction_id=0,
             bump=bump,
             authority=bytes(authority),
         )
@@ -132,6 +134,7 @@ def initialize_publisher_config(
     )
 
     ix_data_layout = Struct(
+        "instruction_id" / Int8ul,
         "config_bump" / Int8ul,
         "publisher_config_bump" / Int8ul,
         "publisher" / Bytes(32),
@@ -139,6 +142,7 @@ def initialize_publisher_config(
 
     ix_data = ix_data_layout.build(
         dict(
+            instruction_id=2,
             config_bump=config_bump,
             publisher_config_bump=publisher_config_bump,
             publisher=bytes(publisher_key),
