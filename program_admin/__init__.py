@@ -16,6 +16,15 @@ from solana.transaction import PACKET_DATA_SIZE, Transaction, TransactionInstruc
 from program_admin import instructions as pyth_program
 from program_admin.keys import load_keypair
 from program_admin.parsing import parse_account
+from program_admin.publisher_program_instructions import (
+    config_account_pubkey as publisher_program_config_account_pubkey,
+)
+from program_admin.publisher_program_instructions import (
+    create_buffer_account,
+    initialize_publisher_config,
+    initialize_publisher_program,
+    publisher_config_account_pubkey,
+)
 from program_admin.types import (
     Network,
     PythAuthorityPermissionAccount,
@@ -56,6 +65,7 @@ class ProgramAdmin:
     rpc_endpoint: str
     key_dir: Path
     program_key: PublicKey
+    publisher_program_key: Optional[PublicKey]
     authority_permission_account: Optional[PythAuthorityPermissionAccount]
     _mapping_accounts: Dict[PublicKey, PythMappingAccount]
     _product_accounts: Dict[PublicKey, PythProductAccount]
@@ -66,6 +76,7 @@ class ProgramAdmin:
         network: Network,
         key_dir: str,
         program_key: str,
+        publisher_program_key: Optional[str],
         commitment: Literal["confirmed", "finalized"],
         rpc_endpoint: str = "",
     ):
@@ -73,6 +84,9 @@ class ProgramAdmin:
         self.rpc_endpoint = rpc_endpoint or RPC_ENDPOINTS[network]
         self.key_dir = Path(key_dir)
         self.program_key = PublicKey(program_key)
+        self.publisher_program_key = (
+            PublicKey(publisher_program_key) if publisher_program_key else None
+        )
         self.commitment = Commitment(commitment)
         self.authority_permission_account = None
         self._mapping_accounts: Dict[PublicKey, PythMappingAccount] = {}
@@ -300,6 +314,23 @@ class ProgramAdmin:
 
         if product_updates:
             await self.refresh_program_accounts()
+
+        # Sync publisher program
+        (
+            publisher_program_instructions,
+            publisher_program_signers,
+        ) = await self.sync_publisher_program(ref_publishers)
+
+        logger.debug(
+            f"Syncing publisher program - {len(publisher_program_instructions)} instructions"
+        )
+
+        if publisher_program_instructions:
+            instructions.extend(publisher_program_instructions)
+            if send_transactions:
+                await self.send_transaction(
+                    publisher_program_instructions, publisher_program_signers
+                )
 
         # Sync publishers
 
@@ -658,3 +689,54 @@ class ProgramAdmin:
 
         if send_transactions:
             await self.send_transaction(instructions, signers)
+
+    async def sync_publisher_program(
+        self, ref_publishers: ReferencePublishers
+    ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
+        if self.publisher_program_key is None:
+            return [], []
+
+        instructions = []
+
+        authority = load_keypair("funding", key_dir=self.key_dir)
+
+        publisher_program_config = publisher_program_config_account_pubkey(
+            self.publisher_program_key
+        )
+
+        # Initialize the publisher program config if it does not exist
+        if not (await account_exists(self.rpc_endpoint, publisher_program_config)):
+            initialize_publisher_program_instruction = initialize_publisher_program(
+                self.publisher_program_key, authority.public_key
+            )
+            instructions.append(initialize_publisher_program_instruction)
+
+        # Initialize publisher config accounts for new publishers
+        for publisher in ref_publishers["keys"].values():
+            publisher_config_account = publisher_config_account_pubkey(
+                publisher, self.publisher_program_key
+            )
+
+            if not (await account_exists(self.rpc_endpoint, publisher_config_account)):
+                size = 100048  # This size is for a buffer supporting 5000 price updates
+                lamports = await self.fetch_minimum_balance(size)
+                buffer_account, create_buffer_instruction = create_buffer_account(
+                    self.publisher_program_key,
+                    authority.public_key,
+                    publisher,
+                    size,
+                    lamports,
+                )
+
+                initialize_publisher_config_instruction = initialize_publisher_config(
+                    self.publisher_program_key,
+                    publisher,
+                    authority.public_key,
+                    buffer_account,
+                )
+
+                instructions.extend(
+                    [create_buffer_instruction, initialize_publisher_config_instruction]
+                )
+
+        return (instructions, [authority])
