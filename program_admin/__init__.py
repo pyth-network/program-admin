@@ -114,12 +114,6 @@ class ProgramAdmin:
         async with AsyncClient(self.rpc_endpoint) as client:
             return (await client.get_minimum_balance_for_rent_exemption(size)).value
 
-    async def account_exists(self, key: PublicKey) -> bool:
-        async with AsyncClient(self.rpc_endpoint) as client:
-            response = await client.get_account_info(key)
-            # The RPC returns null if the account does not exist
-            return bool(response.value)
-
     async def refresh_program_accounts(self):
         async with AsyncClient(self.rpc_endpoint) as client:
             logger.info("Refreshing program accounts")
@@ -711,7 +705,7 @@ class ProgramAdmin:
         )
 
         # Initialize the publisher program config if it does not exist
-        if not (await self.account_exists(publisher_program_config)):
+        if not (await account_exists(self.rpc_endpoint, publisher_program_config)):
             initialize_publisher_program_instruction = initialize_publisher_program(
                 self.publisher_program_key, authority.public_key
             )
@@ -723,7 +717,7 @@ class ProgramAdmin:
                 publisher, self.publisher_program_key
             )
 
-            if not (await self.account_exists(publisher_config_account)):
+            if not (await account_exists(self.rpc_endpoint, publisher_config_account)):
                 size = 100048  # This size is for a buffer supporting 5000 price updates
                 lamports = await self.fetch_minimum_balance(size)
                 buffer_account, create_buffer_instruction = create_buffer_account(
