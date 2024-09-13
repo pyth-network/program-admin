@@ -25,12 +25,12 @@ def publisher_config_account_pubkey(
     return publisher_config_account
 
 
-def initialize_publisher_program(
+def initialize_price_store(
     program_key: PublicKey,
     authority: PublicKey,
 ) -> TransactionInstruction:
     """
-    Pyth publisher program initialize instruction with the given authority
+    Pyth price store program initialize instruction with the given authority
 
     accounts:
     - payer account (signer, writable) - we pass the authority as the payer
@@ -113,7 +113,7 @@ def initialize_publisher_config(
     buffer_account: PublicKey,
 ) -> TransactionInstruction:
     """
-    Pyth publisher program initialize publisher config instruction with the given authority
+    Pyth price store program initialize publisher config instruction with the given authority
 
     accounts:
     - authority account (signer, writable)
@@ -153,9 +153,9 @@ def initialize_publisher_config(
         data=ix_data,
         keys=[
             AccountMeta(pubkey=authority, is_signer=True, is_writable=True),
-            AccountMeta(pubkey=config_account, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=config_account, is_signer=False, is_writable=False),
             AccountMeta(
-                pubkey=publisher_config_account, is_signer=False, is_writable=False
+                pubkey=publisher_config_account, is_signer=False, is_writable=True
             ),
             AccountMeta(pubkey=buffer_account, is_signer=False, is_writable=True),
             AccountMeta(pubkey=SYS_PROGRAM_ID, is_signer=False, is_writable=False),

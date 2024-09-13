@@ -421,7 +421,7 @@ async def test_sync(
         network=network,
         key_dir=key_dir,
         program_key=pyth_program,
-        publisher_program_key=None,
+        price_store_key=None,
         commitment="confirmed",
     )
 

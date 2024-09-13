@@ -16,13 +16,13 @@ from solana.transaction import PACKET_DATA_SIZE, Transaction, TransactionInstruc
 from program_admin import instructions as pyth_program
 from program_admin.keys import load_keypair
 from program_admin.parsing import parse_account
-from program_admin.publisher_program_instructions import (
-    config_account_pubkey as publisher_program_config_account_pubkey,
+from program_admin.price_store_instructions import (
+    config_account_pubkey as price_store_config_account_pubkey,
 )
-from program_admin.publisher_program_instructions import (
+from program_admin.price_store_instructions import (
     create_buffer_account,
+    initialize_price_store,
     initialize_publisher_config,
-    initialize_publisher_program,
     publisher_config_account_pubkey,
 )
 from program_admin.types import (
@@ -65,7 +65,7 @@ class ProgramAdmin:
     rpc_endpoint: str
     key_dir: Path
     program_key: PublicKey
-    publisher_program_key: Optional[PublicKey]
+    price_store_key: Optional[PublicKey]
     authority_permission_account: Optional[PythAuthorityPermissionAccount]
     _mapping_accounts: Dict[PublicKey, PythMappingAccount]
     _product_accounts: Dict[PublicKey, PythProductAccount]
@@ -76,7 +76,7 @@ class ProgramAdmin:
         network: Network,
         key_dir: str,
         program_key: str,
-        publisher_program_key: Optional[str],
+        price_store_key: Optional[str],
         commitment: Literal["confirmed", "finalized"],
         rpc_endpoint: str = "",
     ):
@@ -84,9 +84,7 @@ class ProgramAdmin:
         self.rpc_endpoint = rpc_endpoint or RPC_ENDPOINTS[network]
         self.key_dir = Path(key_dir)
         self.program_key = PublicKey(program_key)
-        self.publisher_program_key = (
-            PublicKey(publisher_program_key) if publisher_program_key else None
-        )
+        self.price_store_key = PublicKey(price_store_key) if price_store_key else None
         self.commitment = Commitment(commitment)
         self.authority_permission_account = None
         self._mapping_accounts: Dict[PublicKey, PythMappingAccount] = {}
@@ -317,19 +315,19 @@ class ProgramAdmin:
 
         # Sync publisher program
         (
-            publisher_program_instructions,
-            publisher_program_signers,
-        ) = await self.sync_publisher_program(ref_publishers)
+            price_store_instructions,
+            price_store_signers,
+        ) = await self.sync_price_store(ref_publishers)
 
         logger.debug(
-            f"Syncing publisher program - {len(publisher_program_instructions)} instructions"
+            f"Syncing price store program - {len(price_store_instructions)} instructions"
         )
 
-        if publisher_program_instructions:
-            instructions.extend(publisher_program_instructions)
+        if price_store_instructions:
+            instructions.extend(price_store_instructions)
             if send_transactions:
                 await self.send_transaction(
-                    publisher_program_instructions, publisher_program_signers
+                    price_store_instructions, price_store_signers
                 )
 
         # Sync publishers
@@ -690,38 +688,36 @@ class ProgramAdmin:
         if send_transactions:
             await self.send_transaction(instructions, signers)
 
-    async def sync_publisher_program(
+    async def sync_price_store(
         self, ref_publishers: ReferencePublishers
     ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
-        if self.publisher_program_key is None:
+        if self.price_store_key is None:
             return [], []
 
         instructions = []
 
         authority = load_keypair("funding", key_dir=self.key_dir)
 
-        publisher_program_config = publisher_program_config_account_pubkey(
-            self.publisher_program_key
-        )
+        price_store_config = price_store_config_account_pubkey(self.price_store_key)
 
-        # Initialize the publisher program config if it does not exist
-        if not (await account_exists(self.rpc_endpoint, publisher_program_config)):
-            initialize_publisher_program_instruction = initialize_publisher_program(
-                self.publisher_program_key, authority.public_key
+        # Initialize the price store program config if it does not exist
+        if not (await account_exists(self.rpc_endpoint, price_store_config)):
+            initialize_price_store_instruction = initialize_price_store(
+                self.price_store_key, authority.public_key
             )
-            instructions.append(initialize_publisher_program_instruction)
+            instructions.append(initialize_price_store_instruction)
 
         # Initialize publisher config accounts for new publishers
         for publisher in ref_publishers["keys"].values():
             publisher_config_account = publisher_config_account_pubkey(
-                publisher, self.publisher_program_key
+                publisher, self.price_store_key
             )
 
             if not (await account_exists(self.rpc_endpoint, publisher_config_account)):
                 size = 100048  # This size is for a buffer supporting 5000 price updates
                 lamports = await self.fetch_minimum_balance(size)
                 buffer_account, create_buffer_instruction = create_buffer_account(
-                    self.publisher_program_key,
+                    self.price_store_key,
                     authority.public_key,
                     publisher,
                     size,
@@ -729,7 +725,7 @@ class ProgramAdmin:
                 )
 
                 initialize_publisher_config_instruction = initialize_publisher_config(
-                    self.publisher_program_key,
+                    self.price_store_key,
                     publisher,
                     authority.public_key,
                     buffer_account,
