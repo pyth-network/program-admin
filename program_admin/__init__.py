@@ -724,6 +724,9 @@ class ProgramAdmin:
                     lamports,
                 )
 
+                if not (await account_exists(self.rpc_endpoint, buffer_account)):
+                    instructions.append(create_buffer_instruction)
+
                 initialize_publisher_config_instruction = initialize_publisher_config(
                     self.price_store_key,
                     publisher,
@@ -731,8 +734,6 @@ class ProgramAdmin:
                     buffer_account,
                 )
 
-                instructions.extend(
-                    [create_buffer_instruction, initialize_publisher_config_instruction]
-                )
+                instructions.append(initialize_publisher_config_instruction)
 
         return (instructions, [authority])
