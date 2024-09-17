@@ -9,7 +9,7 @@ known_local_folder = ["program_admin"]
 authors = ["Thomaz <thomaz@pyth.network>"]
 description = "Syncs products and publishers of the Pyth program"
 name = "program-admin"
-version = "0.1.5"
+version = "0.1.6"
 
 [tool.poetry.dependencies]
 click = "^8.1.0"
