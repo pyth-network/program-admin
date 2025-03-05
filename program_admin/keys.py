@@ -39,7 +39,6 @@ def load_keypair(
             return Keypair.from_secret_key(data)
     else:
         file_path = Path(key_dir) / f"{label_or_pubkey}.json"
-
         if not file_path.exists():
             if generate:
                 return generate_keypair(label_or_pubkey, key_dir)

@@ -114,7 +114,7 @@ class ProgramAdmin:
 
     async def refresh_program_accounts(self):
         async with AsyncClient(self.rpc_endpoint) as client:
-            logger.info("Refreshing program accounts")
+            logger.info(f"Refreshing program accounts for {self.program_key}")
             result = (
                 await client.get_program_accounts(
                     pubkey=self.program_key,
@@ -395,7 +395,9 @@ class ProgramAdmin:
                     )
                 )
 
-            logger.debug("Building pyth_program.init_mapping instruction")
+            logger.debug(
+                f"Building pyth_program.init_mapping instruction: {funding_keypair.public_key}, {mapping_0_keypair.public_key}"
+            )
             instructions.append(
                 pyth_program.init_mapping(
                     self.program_key,
@@ -602,6 +604,28 @@ class ProgramAdmin:
             )
 
         return (instructions, [funding_keypair, price_keypair])
+
+    def update_price_instructions(
+        self,
+        publisher_keypair: Keypair,
+        price_pubkey: PublicKey,
+        price: int,
+        confidence: int,
+        price_slot: int,
+    ) -> Tuple[List[TransactionInstruction], List[Keypair]]:
+        instructions = []
+        instructions.append(
+            pyth_program.upd_price(
+                self.program_key,
+                publisher_keypair.public_key,
+                price_pubkey,
+                1,
+                price,
+                confidence,
+                price_slot,
+            )
+        )
+        return (instructions, [publisher_keypair])
 
     async def sync_authority_permissions_instructions(
         self,

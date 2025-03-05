@@ -1,8 +1,9 @@
 from typing import Dict
 
-from construct import Bytes, Int32sl, Int32ul, Struct
+from construct import Bytes, Int32sl, Int32ul, Int64sl, Struct
 from solana.publickey import PublicKey
 from solana.system_program import SYS_PROGRAM_ID
+from solana.sysvar import SYSVAR_CLOCK_PUBKEY
 from solana.transaction import AccountMeta, TransactionInstruction
 
 from program_admin.types import ReferenceAuthorityPermissions
@@ -16,6 +17,8 @@ COMMAND_UPD_PRODUCT = 3
 COMMAND_ADD_PRICE = 4
 COMMAND_ADD_PUBLISHER = 5
 COMMAND_DEL_PUBLISHER = 6
+COMMAND_UPD_PRICE = 7
+COMMAND_INIT_PRICE = 9
 COMMAND_MIN_PUBLISHERS = 12
 COMMAND_RESIZE_PRICE_ACCOUNT = 14
 COMMAND_DEL_PRICE = 15
@@ -292,6 +295,79 @@ def toggle_publisher(
             AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=price_account_key, is_signer=True, is_writable=True),
             AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=True),
+        ],
+        program_id=program_key,
+    )
+
+
+def init_price(
+    program_key: PublicKey,
+    funding_key: PublicKey,
+    price_account_key: PublicKey,
+) -> TransactionInstruction:
+    layout = Struct(
+        "version" / Int32ul, "command" / Int32sl, "exponent" / Int32sl, "type" / Int32ul
+    )
+    data = layout.build(
+        dict(
+            version=PROGRAM_VERSION,
+            command=COMMAND_INIT_PRICE,
+            exponent=8,
+            type=PRICE_TYPE_PRICE,
+        )
+    )
+
+    permissions_account = get_permissions_account(
+        program_key, AUTHORITY_PERMISSIONS_PDA_SEED
+    )
+
+    return TransactionInstruction(
+        data=data,
+        keys=[
+            AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=price_account_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=permissions_account, is_signer=False, is_writable=True),
+        ],
+        program_id=program_key,
+    )
+
+
+def upd_price(
+    program_key: PublicKey,
+    funding_key: PublicKey,
+    price_account_key: PublicKey,
+    status: int,
+    price: int,
+    confidence: int,
+    publish_slot: int,
+) -> TransactionInstruction:
+    layout = Struct(
+        "version" / Int32ul,
+        "command" / Int32sl,
+        "status" / Int32sl,
+        "unused" / Int32sl,
+        "price" / Int64sl,
+        "confidence" / Int64sl,
+        "publish_slot" / Int64sl,
+    )
+    data = layout.build(
+        dict(
+            version=PROGRAM_VERSION,
+            command=COMMAND_UPD_PRICE,
+            unused=0,
+            status=status,
+            price=price,
+            confidence=confidence,
+            publish_slot=publish_slot,
+        )
+    )
+
+    return TransactionInstruction(
+        data=data,
+        keys=[
+            AccountMeta(pubkey=funding_key, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=price_account_key, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=SYSVAR_CLOCK_PUBKEY, is_signer=False, is_writable=False),
         ],
         program_id=program_key,
     )
