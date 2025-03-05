@@ -297,15 +297,21 @@ def list_accounts(network, rpc_endpoint, program_key, keys, publishers, commitme
 
         for product_key in mapping_account.data.product_account_keys:
             product_account = program_admin.get_product_account(product_key)
+            print(f"  Product Public Key: {product_account.public_key}")
             print(f"  Product: {product_account.data.metadata['symbol']}")
 
             if product_account.data.first_price_account_key != PublicKey(0):
                 price_account = program_admin.get_price_account(
                     product_account.data.first_price_account_key
                 )
+                print(f"  Price Account: {price_account.public_key}")
                 print(
                     f"    Price: {price_account.data.exponent} exponent ({price_account.data.components_count} components)"
                 )
+                print(f"    numPublishers: {price_account.data.components_count}")
+                print(f"    numPrices: {price_account.data.quoters_count}")
+                print(f"    numComponents: {len(price_account.data.price_components)}")
+                print(f"    Aggregate: {price_account.data.aggregate}")
 
                 for component in price_account.data.price_components:
                     try:
@@ -313,7 +319,9 @@ def list_accounts(network, rpc_endpoint, program_key, keys, publishers, commitme
                     except KeyError:
                         name = f"??? ({component.publisher_key})"
 
-                    print(f"      Publisher: {name}")
+                    print(
+                        f"      Publisher: {name}: {component.latest_price} {component.aggregate_price}"
+                    )
 
         mapping_key = mapping_account.data.next_mapping_account_key
 
@@ -462,11 +470,9 @@ def sync(
     ref_permissions = parse_permissions_with_overrides(
         Path(permissions), Path(overrides), network
     )
-
     ref_authority_permissions = parse_authority_permissions_json(
         Path(authority_permissions)
     )
-
     asyncio.run(
         program_admin.sync(
             ref_products=ref_products,
@@ -478,6 +484,41 @@ def sync(
             allocate_price_v2=(allocate_price_v2 == "true"),
         )
     )
+
+
+@click.command()
+@click.option("--network", help="Solana network", envvar="NETWORK")
+@click.option("--rpc-endpoint", help="Solana RPC endpoint", envvar="RPC_ENDPOINT")
+@click.option("--program-key", help="Pyth program key", envvar="PROGRAM_KEY")
+@click.option("--keys", help="Path to keys directory", envvar="KEYS")
+@click.option("--publisher", help="key file of the publisher")
+@click.option("--price-account", help="Public key of the price account")
+@click.option("--price", help="Price to set")
+@click.option("--price-slot", help="Price slot to set")
+def update_price(
+    network,
+    rpc_endpoint,
+    program_key,
+    keys,
+    publisher,
+    price_account,
+    price,
+    price_slot,
+):
+    program_admin = ProgramAdmin(
+        network=network,
+        rpc_endpoint=rpc_endpoint,
+        key_dir=keys,
+        program_key=program_key,
+        price_store_key=None,
+        commitment="confirmed",
+    )
+    publisher_keypair = load_keypair(publisher, key_dir=keys)
+    price_account = PublicKey(price_account)
+    (instructions, signers,) = program_admin.update_price_instructions(
+        publisher_keypair, price_account, int(price), 100, int(price_slot)
+    )
+    asyncio.run(program_admin.send_transaction(instructions, signers))
 
 
 @click.command()
@@ -578,5 +619,6 @@ cli.add_command(toggle_publisher)
 cli.add_command(update_product_metadata)
 cli.add_command(migrate_upgrade_authority)
 cli.add_command(resize_price_accounts_v2)
+cli.add_command(update_price)
 logger.remove()
 logger.add(sys.stdout, serialize=(not os.environ.get("DEV_MODE")))

@@ -14,8 +14,8 @@ from program_admin.types import (
     ReferencePermissions,
 )
 
-MAPPING_ACCOUNT_SIZE = 20536  # https://github.com/pyth-network/pyth-client/blob/b49f73afe32ce8685a3d05e32d8f3bb51909b061/program/src/oracle/oracle.h#L88
-MAPPING_ACCOUNT_PRODUCT_LIMIT = 640
+MAPPING_ACCOUNT_SIZE = 160056  # https://github.com/pyth-network/pyth-client/blob/main/program/c/src/oracle/oracle.h#L120
+MAPPING_ACCOUNT_PRODUCT_LIMIT = 5000
 PRICE_ACCOUNT_V1_SIZE = 3312
 PRICE_ACCOUNT_V2_SIZE = 12576
 PRICE_V1_COMP_COUNT = 32
